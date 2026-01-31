@@ -2,6 +2,7 @@ import { Database, Trash2, Loader2, Plug, Unplug, Circle } from 'lucide-react'
 import { useConnectionStore, type Connection } from '@/stores/connectionStore'
 import { cn } from '@/lib/utils'
 import { ipc } from '@/lib/ipc'
+import { toast } from '@/stores/toastStore'
 
 export function ConnectionList() {
   const connections = useConnectionStore((state) => state.connections)
@@ -25,11 +26,14 @@ export function ConnectionList() {
 
       if (result.success) {
         setConnectionStatus(connection.id, 'connected')
+        toast.success(`Connected to ${connection.name}`)
       } else {
         setConnectionStatus(connection.id, 'error')
+        toast.error(result.error || 'Connection failed')
       }
-    } catch {
+    } catch (err) {
       setConnectionStatus(connection.id, 'error')
+      toast.error(err instanceof Error ? err.message : 'Connection failed')
     }
   }
 

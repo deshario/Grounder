@@ -4,6 +4,7 @@ import * as monaco from 'monaco-editor'
 import { Play, Loader2 } from 'lucide-react'
 import { ipc } from '@/lib/ipc'
 import { useTabStore } from '@/stores/tabStore'
+import { toast } from '@/stores/toastStore'
 import { QueryResults } from './QueryResults'
 import type { QueryResult } from '../../../shared/types'
 
@@ -110,11 +111,17 @@ export function QueryEditor({ tabId, connectionId }: QueryEditorProps) {
       const res = await ipc.query(connectionId, queryText)
       if (res.success && res.data) {
         setResult(res.data)
+        if (res.data.rowCount !== undefined && res.data.rows.length === 0) {
+          toast.success(`Query OK, ${res.data.rowCount} row(s) affected`)
+        }
       } else {
         setError(res.error || 'Query failed')
+        toast.error(res.error || 'Query failed')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Query failed')
+      const msg = err instanceof Error ? err.message : 'Query failed'
+      setError(msg)
+      toast.error(msg)
     } finally {
       setExecuting(false)
     }

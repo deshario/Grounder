@@ -10,7 +10,37 @@
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "pack": "electron-builder --dir",
+    "dist": "electron-vite build && electron-builder"
+  },
+  "build": {
+    "appId": "com.querypad.app",
+    "productName": "QueryPad",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "node_modules/**/*",
+      "!node_modules/.pnpm/**/cpu-features/**"
+    ],
+    "asarUnpack": [
+      "node_modules/keytar/**",
+      "node_modules/ssh2/**"
+    ],
+    "npmRebuild": false,
+    "mac": {
+      "target": ["dmg", "zip"],
+      "category": "public.app-category.developer-tools"
+    },
+    "dmg": {
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
+    }
   },
   "keywords": [
     "database",
@@ -31,6 +61,7 @@
     "@vitejs/plugin-react": "^5.1.2",
     "autoprefixer": "^10.4.24",
     "electron": "^40.1.0",
+    "electron-builder": "^26.4.0",
     "electron-vite": "^5.0.0",
     "eslint": "^9.39.2",
     "globals": "^17.2.0",

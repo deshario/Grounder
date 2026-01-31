@@ -4,11 +4,13 @@ import { SlideOverPanel } from '@/components/layout/SlideOverPanel'
 import { TabsContainer } from '@/components/layout/TabsContainer'
 import { useTabStore } from '@/stores/tabStore'
 import { useConnectionStore } from '@/stores/connectionStore'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { cn } from '@/lib/utils'
 
 type PanelTab = 'connections' | 'schema'
 
 function App() {
+  useKeyboardShortcuts()
   const [panelOpen, setPanelOpen] = useState(false)
   const [panelTab, setPanelTab] = useState<PanelTab>('connections')
 

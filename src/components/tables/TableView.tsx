@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useEditStore } from '@/stores/editStore'
 import { useTabStore } from '@/stores/tabStore'
+import { toast } from '@/stores/toastStore'
 import { EditableCell } from './EditableCell'
 import { RowDetailPanel } from './RowDetailPanel'
 import { FilterBar, type Filter } from './FilterBar'
@@ -150,8 +151,11 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
       // Clear edits and reload data
       clearEdits(tabId)
       await loadData()
+      toast.success('Changes saved')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save changes')
+      const msg = err instanceof Error ? err.message : 'Failed to save changes'
+      setError(msg)
+      toast.error(msg)
     } finally {
       setSaving(false)
     }
@@ -175,9 +179,11 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
   const handleAddRow = async (data: Record<string, unknown>) => {
     const result = await ipc.insertRow(connectionId, tableName, schema, data)
     if (!result.success) {
+      toast.error(result.error || 'Failed to add row')
       throw new Error(result.error || 'Failed to add row')
     }
     await loadData()
+    toast.success('Row added')
   }
 
   const handleDeleteRow = async () => {
@@ -195,13 +201,18 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
     try {
       const result = await ipc.deleteRow(connectionId, tableName, schema, pk)
       if (!result.success) {
-        setError(result.error || 'Failed to delete row')
+        const msg = result.error || 'Failed to delete row'
+        setError(msg)
+        toast.error(msg)
         return
       }
       setSelectedRowIndex(null)
       await loadData()
+      toast.success('Row deleted')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete row')
+      const msg = err instanceof Error ? err.message : 'Failed to delete row'
+      setError(msg)
+      toast.error(msg)
     }
   }
 
