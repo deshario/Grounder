@@ -150,18 +150,15 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
       accessorKey: col.name,
       header: ({ column }) => (
         <button
-          className="flex items-center gap-1 hover:text-foreground"
+          className="flex items-center gap-1.5 hover:text-foreground transition-colors"
           onClick={() => column.toggleSorting()}
         >
-          <span className="font-medium">{col.name}</span>
-          <span className="text-[10px] text-muted-foreground">({col.type})</span>
+          <span className="font-medium text-xs">{col.name}</span>
           {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="w-3 h-3" />
+            <ArrowUp className="w-3 h-3 text-blue-400" />
           ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="w-3 h-3" />
-          ) : (
-            <ArrowUpDown className="w-3 h-3 opacity-30" />
-          )}
+            <ArrowDown className="w-3 h-3 text-blue-400" />
+          ) : null}
         </button>
       ),
       cell: ({ getValue, row }) => {
@@ -198,7 +195,7 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 35,
+    estimateSize: () => 26,
     overscan: 10
   })
 
@@ -218,19 +215,19 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
   return (
     <div className="flex flex-col h-full">
       {/* Table header info */}
-      <div className="px-4 py-2 border-b border-border flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">
-          {totalCount.toLocaleString()} rows total
+      <div className="px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-[11px] bg-[#1a1a1a]">
+        <span className="text-muted-foreground font-mono">
+          {totalCount.toLocaleString()} rows
           {loading && <Loader2 className="w-3 h-3 ml-2 inline animate-spin" />}
         </span>
         <div className="flex items-center gap-2">
           {hasEdits && (
             <>
-              <span className="text-yellow-500">{pendingEdits.length} pending changes</span>
+              <span className="text-yellow-500">{pendingEdits.length} changes</span>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 text-xs"
+                className="h-5 text-[11px] px-2"
                 onClick={handleDiscardChanges}
                 disabled={saving}
               >
@@ -240,7 +237,7 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
               <Button
                 variant="default"
                 size="sm"
-                className="h-6 text-xs"
+                className="h-5 text-[11px] px-2"
                 onClick={handleSaveChanges}
                 disabled={saving}
               >
@@ -253,23 +250,23 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
               </Button>
             </>
           )}
-          <span className="text-muted-foreground">
-            Showing {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, totalCount)}
+          <span className="text-muted-foreground font-mono">
+            {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, totalCount)}
           </span>
         </div>
       </div>
 
       {/* Table */}
       <div ref={parentRef} className="flex-1 overflow-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead className="sticky top-0 bg-background z-10">
+        <table className="w-max min-w-full border-collapse text-xs font-mono">
+          <thead className="sticky top-0 bg-[#1a1a1a] z-10">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-3 py-2 text-left border-b border-border text-muted-foreground font-normal whitespace-nowrap"
-                    style={{ width: header.getSize() }}
+                    className="px-3 py-1.5 text-left border-b border-white/10 text-muted-foreground font-medium whitespace-nowrap"
+                    style={{ minWidth: 100 }}
                   >
                     {header.isPlaceholder
                       ? null
@@ -294,7 +291,7 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
                     <tr
                       key={row.id}
                       className={cn(
-                        'hover:bg-white/5',
+                        'hover:bg-white/[0.06]',
                         virtualRow.index % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.02]'
                       )}
                       style={{
@@ -304,7 +301,7 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
                       {row.getVisibleCells().map((cell) => (
                         <td
                           key={cell.id}
-                          className="px-3 py-1.5 border-b border-border/50 max-w-[300px]"
+                          className="px-3 py-1 border-b border-white/[0.06] whitespace-nowrap overflow-hidden text-ellipsis max-w-[400px]"
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
@@ -319,28 +316,28 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
       </div>
 
       {/* Pagination */}
-      <div className="px-4 py-2 border-t border-border flex items-center justify-between">
-        <div className="text-xs text-muted-foreground">
-          Page {page + 1} of {totalPages}
+      <div className="px-3 py-1.5 border-t border-white/10 flex items-center justify-between bg-[#1a1a1a]">
+        <div className="text-[11px] text-muted-foreground font-mono">
+          Page {page + 1} of {totalPages || 1}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <Button
             variant="ghost"
             size="icon"
-            className="w-8 h-8"
+            className="w-6 h-6"
             disabled={page === 0 || loading}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3.5 h-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="w-8 h-8"
+            className="w-6 h-6"
             disabled={page >= totalPages - 1 || loading}
             onClick={() => setPage((p) => p + 1)}
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </Button>
         </div>
       </div>

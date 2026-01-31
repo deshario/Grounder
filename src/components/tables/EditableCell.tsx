@@ -87,7 +87,7 @@ export function EditableCell({
         onChange={(e) => setEditValue(e.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={handleSave}
-        className="w-full bg-background border border-primary rounded px-1.5 py-0.5 text-sm focus:outline-none"
+        className="w-full bg-[#2a2a2a] border border-blue-500/50 rounded px-1 py-0 text-xs font-mono focus:outline-none focus:border-blue-500"
       />
     )
   }
@@ -95,7 +95,7 @@ export function EditableCell({
   return (
     <div
       className={cn(
-        'cursor-pointer min-h-[24px] flex items-center',
+        'cursor-pointer min-h-[20px] flex items-center truncate',
         isDirty && 'bg-yellow-500/20 rounded px-1 -mx-1',
         isPrimaryKey && 'cursor-not-allowed opacity-70'
       )}
@@ -109,10 +109,10 @@ export function EditableCell({
 
 function formatForDisplay(value: unknown, type: string): React.ReactNode {
   if (value === null) {
-    return <span className="text-muted italic">NULL</span>
+    return <span className="text-muted-foreground/50 text-[10px]">NULL</span>
   }
   if (typeof value === 'object') {
-    return <span className="text-blue-400">{JSON.stringify(value)}</span>
+    return <span className="text-orange-400/80">{JSON.stringify(value)}</span>
   }
   if (typeof value === 'boolean') {
     return <span className="text-purple-400">{value ? 'true' : 'false'}</span>
