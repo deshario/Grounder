@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { Plus, Database, FolderTree } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { ConnectionList } from '@/components/connections/ConnectionList'
 import { ConnectionForm } from '@/components/connections/ConnectionForm'
 import { SchemaTree } from '@/components/schema/SchemaTree'
@@ -17,6 +16,7 @@ type SidebarTab = 'connections' | 'schema'
 export function Sidebar({ className, onTableSelect }: SidebarProps) {
   const [showConnectionForm, setShowConnectionForm] = useState(false)
   const [activeTab, setActiveTab] = useState<SidebarTab>('connections')
+  const [isHovered, setIsHovered] = useState(false)
 
   const activeConnectionId = useConnectionStore((state) => state.activeConnectionId)
   const connectionStatus = useConnectionStore((state) =>
@@ -32,73 +32,75 @@ export function Sidebar({ className, onTableSelect }: SidebarProps) {
   }, [isConnected])
 
   return (
-    <div className={cn('flex flex-col h-full bg-background border-r border-border', className)}>
-      {/* Header with drag region for macOS */}
-      <div className="h-12 flex items-center justify-end px-4 border-b border-border app-drag-region">
-        <span className="text-sm font-medium">QueryPad</span>
-      </div>
-
-      {/* Tab buttons */}
-      <div className="flex border-b border-border">
+    <aside
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={cn(
+        'flex h-full bg-background border-r border-border',
+        'transition-all duration-200 ease-out overflow-hidden',
+        isHovered ? 'w-[280px]' : 'w-12',
+        className
+      )}
+    >
+      <nav className="w-12 shrink-0 flex flex-col border-r border-border">
+        <div className="h-12 shrink-0 app-drag-region" />
         <button
           className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs',
+            'flex items-center justify-center h-10 transition-colors',
             activeTab === 'connections'
-              ? 'text-foreground border-b-2 border-primary'
-              : 'text-muted hover:text-foreground'
+              ? 'text-foreground bg-white/5'
+              : 'text-muted hover:text-foreground hover:bg-white/5'
           )}
           onClick={() => setActiveTab('connections')}
+          title="Connections"
         >
-          <Database className="w-3.5 h-3.5" />
-          Connections
+          <Database className="w-5 h-5" />
         </button>
         <button
           className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs',
+            'flex items-center justify-center h-10 transition-colors',
             activeTab === 'schema'
-              ? 'text-foreground border-b-2 border-primary'
-              : 'text-muted hover:text-foreground',
+              ? 'text-foreground bg-white/5'
+              : 'text-muted hover:text-foreground hover:bg-white/5',
             !isConnected && 'opacity-50 cursor-not-allowed'
           )}
           onClick={() => isConnected && setActiveTab('schema')}
           disabled={!isConnected}
+          title="Schema"
         >
-          <FolderTree className="w-3.5 h-3.5" />
-          Schema
+          <FolderTree className="w-5 h-5" />
         </button>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-hidden">
-        {activeTab === 'connections' ? (
-          <div className="h-full overflow-auto p-2">
-            <ConnectionList />
+        <div className="flex-1" />
+        <button
+          className="flex items-center justify-center h-10 text-muted hover:text-foreground hover:bg-white/5 transition-colors"
+          onClick={() => setShowConnectionForm(true)}
+          title="Add Connection"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
+      </nav>
+      {isHovered && (
+        <div className="flex-1 flex flex-col min-w-0">
+          <header className="h-12 flex items-center px-3 border-b border-border shrink-0">
+            <span className="text-sm font-medium">
+              {activeTab === 'connections' ? 'Connections' : 'Schema'}
+            </span>
+          </header>
+          <div className="flex-1 overflow-hidden">
+            {activeTab === 'connections' ? (
+              <div className="h-full overflow-auto p-2">
+                <ConnectionList />
+              </div>
+            ) : (
+              <SchemaTree onTableSelect={onTableSelect} />
+            )}
           </div>
-        ) : (
-          <SchemaTree onTableSelect={onTableSelect} />
-        )}
-      </div>
-
-      {/* Footer actions */}
-      {activeTab === 'connections' && (
-        <div className="p-2 border-t border-border">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start gap-2"
-            onClick={() => setShowConnectionForm(true)}
-          >
-            <Plus className="w-4 h-4" />
-            Add Connection
-          </Button>
         </div>
       )}
-
-      {/* Connection Form Modal */}
       <ConnectionForm
         open={showConnectionForm}
         onClose={() => setShowConnectionForm(false)}
       />
-    </div>
+    </aside>
   )
 }

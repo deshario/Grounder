@@ -13,6 +13,7 @@ import { ipc } from '@/lib/ipc'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useEditStore } from '@/stores/editStore'
+import { useTabStore } from '@/stores/tabStore'
 import { EditableCell } from './EditableCell'
 import { RowDetailPanel } from './RowDetailPanel'
 import { FilterBar, type Filter } from './FilterBar'
@@ -52,6 +53,14 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
   )
   const clearEdits = useEditStore((state) => state.clearEdits)
   const hasEdits = pendingEdits.length > 0
+
+  const closeRowDetailsSignal = useTabStore((state) => state.closeRowDetailsSignal)
+
+  useEffect(() => {
+    if (closeRowDetailsSignal > 0) {
+      setSelectedRowIndex(null)
+    }
+  }, [closeRowDetailsSignal])
 
   const loadData = useCallback(async () => {
     setLoading(true)

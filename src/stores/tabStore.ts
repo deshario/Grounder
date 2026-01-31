@@ -19,22 +19,31 @@ export interface QueryTab {
 
 export type Tab = TableTab | QueryTab
 
+const fallbackActiveId = (tabs: Tab[], currentId: string | null) =>
+  tabs.some((t) => t.id === currentId) ? currentId : tabs.at(-1)?.id ?? null
+
 interface TabState {
   tabs: Tab[]
-  activeTabId: string | null
+  activeTableTabId: string | null
+  activeQueryTabId: string | null
+  closeRowDetailsSignal: number
 
-  // Actions
   openTableTab: (connectionId: string, tableName: string, schema: string) => void
   openQueryTab: (connectionId: string) => void
   closeTab: (tabId: string) => void
+  closeOtherTabs: (tabId: string) => void
+  closeTabsToRight: (tabId: string) => void
   closeTableTab: (tableName: string, schema: string) => void
-  setActiveTab: (tabId: string | null) => void
+  setActiveTableTab: (tabId: string | null) => void
+  setActiveQueryTab: (tabId: string | null) => void
   updateQueryTab: (tabId: string, query: string) => void
 }
 
 export const useTabStore = create<TabState>()((set, get) => ({
   tabs: [],
-  activeTabId: null,
+  activeTableTabId: null,
+  activeQueryTabId: null,
+  closeRowDetailsSignal: 0,
 
   openTableTab: (connectionId, tableName, schema) => {
     const existingTab = get().tabs.find(
@@ -46,7 +55,7 @@ export const useTabStore = create<TabState>()((set, get) => ({
     )
 
     if (existingTab) {
-      set({ activeTabId: existingTab.id })
+      set({ activeTableTabId: existingTab.id })
       return
     }
 
@@ -61,66 +70,85 @@ export const useTabStore = create<TabState>()((set, get) => ({
 
     set((state) => ({
       tabs: [...state.tabs, newTab],
-      activeTabId: newTab.id
+      activeTableTabId: newTab.id
     }))
   },
 
   openQueryTab: (connectionId) => {
-    const queryCount = get().tabs.filter((tab) => tab.type === 'query').length + 1
+    const existingQueryTabs = get().tabs.filter((t) => t.type === 'query')
+    const isFirstQueryTab = existingQueryTabs.length === 0
     const newTab: QueryTab = {
       id: `query-${connectionId}-${Date.now()}`,
       type: 'query',
-      title: `Query ${queryCount}`,
+      title: `Query ${existingQueryTabs.length + 1}`,
       connectionId,
       query: 'SELECT * FROM '
     }
 
     set((state) => ({
       tabs: [...state.tabs, newTab],
-      activeTabId: newTab.id
+      activeQueryTabId: newTab.id,
+      closeRowDetailsSignal: isFirstQueryTab ? state.closeRowDetailsSignal + 1 : state.closeRowDetailsSignal
     }))
   },
 
   closeTab: (tabId) =>
     set((state) => {
-      const newTabs = state.tabs.filter((tab) => tab.id !== tabId)
-      let newActiveTabId = state.activeTabId
-
-      if (state.activeTabId === tabId) {
-        const closedIndex = state.tabs.findIndex((tab) => tab.id === tabId)
-        if (newTabs.length > 0) {
-          newActiveTabId = newTabs[Math.min(closedIndex, newTabs.length - 1)].id
-        } else {
-          newActiveTabId = null
-        }
+      const newTabs = state.tabs.filter((t) => t.id !== tabId)
+      const tableTabs = newTabs.filter((t) => t.type === 'table')
+      const queryTabs = newTabs.filter((t) => t.type === 'query')
+      return {
+        tabs: newTabs,
+        activeTableTabId: fallbackActiveId(tableTabs, state.activeTableTabId),
+        activeQueryTabId: fallbackActiveId(queryTabs, state.activeQueryTabId)
       }
+    }),
 
-      return { tabs: newTabs, activeTabId: newActiveTabId }
+  closeOtherTabs: (tabId) =>
+    set((state) => {
+      const keepTab = state.tabs.find((t) => t.id === tabId)
+      if (!keepTab) return state
+
+      return {
+        tabs: [keepTab],
+        activeTableTabId: keepTab.type === 'table' ? tabId : null,
+        activeQueryTabId: keepTab.type === 'query' ? tabId : null
+      }
+    }),
+
+  closeTabsToRight: (tabId) =>
+    set((state) => {
+      const tabIndex = state.tabs.findIndex((t) => t.id === tabId)
+      if (tabIndex === -1) return state
+
+      const newTabs = state.tabs.slice(0, tabIndex + 1)
+      const tableTabs = newTabs.filter((t) => t.type === 'table')
+      const queryTabs = newTabs.filter((t) => t.type === 'query')
+      return {
+        tabs: newTabs,
+        activeTableTabId: fallbackActiveId(tableTabs, state.activeTableTabId),
+        activeQueryTabId: fallbackActiveId(queryTabs, state.activeQueryTabId)
+      }
     }),
 
   closeTableTab: (tableName, schema) =>
     set((state) => {
       const tabToClose = state.tabs.find(
-        (tab) => tab.type === 'table' && tab.tableName === tableName && tab.schema === schema
+        (t) => t.type === 'table' && t.tableName === tableName && t.schema === schema
       )
       if (!tabToClose) return state
 
-      const newTabs = state.tabs.filter((tab) => tab.id !== tabToClose.id)
-      let newActiveTabId = state.activeTabId
-
-      if (state.activeTabId === tabToClose.id) {
-        const closedIndex = state.tabs.findIndex((tab) => tab.id === tabToClose.id)
-        if (newTabs.length > 0) {
-          newActiveTabId = newTabs[Math.min(closedIndex, newTabs.length - 1)].id
-        } else {
-          newActiveTabId = null
-        }
+      const newTabs = state.tabs.filter((t) => t.id !== tabToClose.id)
+      const tableTabs = newTabs.filter((t) => t.type === 'table')
+      return {
+        tabs: newTabs,
+        activeTableTabId: fallbackActiveId(tableTabs, state.activeTableTabId),
+        activeQueryTabId: state.activeQueryTabId
       }
-
-      return { tabs: newTabs, activeTabId: newActiveTabId }
     }),
 
-  setActiveTab: (tabId) => set({ activeTabId: tabId }),
+  setActiveTableTab: (tabId) => set({ activeTableTabId: tabId }),
+  setActiveQueryTab: (tabId) => set({ activeQueryTabId: tabId }),
 
   updateQueryTab: (tabId, query) =>
     set((state) => ({
