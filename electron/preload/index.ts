@@ -1,16 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { ElectronAPI } from '../../shared/types'
 
-// Expose protected methods to renderer
-contextBridge.exposeInMainWorld('electronAPI', {
-  // Placeholder for IPC methods - will be expanded in Phase 2
-  ping: () => ipcRenderer.invoke('ping')
-})
-
-// Type declarations for the exposed API
-declare global {
-  interface Window {
-    electronAPI: {
-      ping: () => Promise<string>
-    }
-  }
+const electronAPI: ElectronAPI = {
+  ping: () => ipcRenderer.invoke('ping'),
+  getAppInfo: () => ipcRenderer.invoke('get-app-info')
 }
+
+contextBridge.exposeInMainWorld('electronAPI', electronAPI)
