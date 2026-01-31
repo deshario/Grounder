@@ -34,10 +34,8 @@ export function Sidebar({ className, onTableSelect }: SidebarProps) {
   return (
     <div className={cn('flex flex-col h-full bg-background border-r border-border', className)}>
       {/* Header with drag region for macOS */}
-      <div className="h-12 flex items-center px-4 border-b border-border app-drag-region">
-        <span className="text-sm font-medium pl-16">
-          {activeTab === 'connections' ? 'Connections' : 'Schema'}
-        </span>
+      <div className="h-12 flex items-center justify-end px-4 border-b border-border app-drag-region">
+        <span className="text-sm font-medium">QueryPad</span>
       </div>
 
       {/* Tab buttons */}

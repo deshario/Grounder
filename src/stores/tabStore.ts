@@ -52,7 +52,7 @@ export const useTabStore = create<TabState>()((set, get) => ({
     const newTab: TableTab = {
       id: `table-${connectionId}-${schema}-${tableName}-${Date.now()}`,
       type: 'table',
-      title: `${schema}.${tableName}`,
+      title: tableName,
       connectionId,
       tableName,
       schema

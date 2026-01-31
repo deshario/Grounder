@@ -18,7 +18,7 @@ function App() {
     <div className="flex flex-col h-screen">
       <div className="flex flex-1 overflow-hidden">
         <Sidebar className="w-64 shrink-0" onTableSelect={handleTableSelect} />
-        <TabsContainer className="flex-1" />
+        <TabsContainer className="flex-1 min-w-0" />
       </div>
       <StatusBar />
     </div>

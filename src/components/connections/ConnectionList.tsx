@@ -57,8 +57,12 @@ export function ConnectionList() {
 
   if (connections.length === 0) {
     return (
-      <div className="text-xs text-muted px-2 py-4 text-center">
-        No connections yet
+      <div className="flex flex-col items-center py-8 px-4 text-center">
+        <div className="w-10 h-10 mb-3 rounded-lg bg-white/5 flex items-center justify-center">
+          <Database className="w-5 h-5 opacity-40" />
+        </div>
+        <p className="text-xs text-muted-foreground">No connections yet</p>
+        <p className="text-[10px] text-muted-foreground/60 mt-1">Click "Add Connection" below</p>
       </div>
     )
   }

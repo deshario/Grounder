@@ -142,16 +142,24 @@ export function SchemaTree({ onTableSelect }: SchemaTreeProps) {
 
   if (!activeConnectionId) {
     return (
-      <div className="text-xs text-muted px-2 py-4 text-center">
-        Select a connection
+      <div className="flex flex-col items-center py-8 px-4 text-center">
+        <div className="w-10 h-10 mb-3 rounded-lg bg-white/5 flex items-center justify-center">
+          <Folder className="w-5 h-5 opacity-40" />
+        </div>
+        <p className="text-xs text-muted-foreground">No connection selected</p>
+        <p className="text-[10px] text-muted-foreground/60 mt-1">Select a connection first</p>
       </div>
     )
   }
 
   if (connectionStatus !== 'connected') {
     return (
-      <div className="text-xs text-muted px-2 py-4 text-center">
-        Not connected
+      <div className="flex flex-col items-center py-8 px-4 text-center">
+        <div className="w-10 h-10 mb-3 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+          <Folder className="w-5 h-5 text-yellow-500/60" />
+        </div>
+        <p className="text-xs text-muted-foreground">Not connected</p>
+        <p className="text-[10px] text-muted-foreground/60 mt-1">Double-click connection to connect</p>
       </div>
     )
   }

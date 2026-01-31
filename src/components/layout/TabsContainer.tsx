@@ -78,11 +78,14 @@ export function TabsContainer({ className }: TabsContainerProps) {
       </div>
 
       {/* Content area */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden min-w-0">
         {!activeTab ? (
           <div className="flex flex-col items-center justify-center h-full text-muted">
-            <Table className="w-12 h-12 mb-4 opacity-30" />
-            <p className="text-sm">Select a table or run a query to get started</p>
+            <div className="w-16 h-16 mb-4 rounded-xl bg-white/5 flex items-center justify-center">
+              <Table className="w-8 h-8 opacity-40" />
+            </div>
+            <p className="text-sm font-medium mb-1">No table selected</p>
+            <p className="text-xs text-muted-foreground">Click a table in the Schema tab to view its data</p>
           </div>
         ) : activeTab.type === 'table' ? (
           <TableView

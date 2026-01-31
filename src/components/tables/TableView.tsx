@@ -8,14 +8,16 @@ import {
   type SortingState
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowUpDown, ArrowUp, ArrowDown, Loader2, ChevronLeft, ChevronRight, Save, X } from 'lucide-react'
+import { ArrowUp, ArrowDown, Loader2, ChevronLeft, ChevronRight, Save, X } from 'lucide-react'
 import { ipc } from '@/lib/ipc'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useEditStore } from '@/stores/editStore'
+import { EditableCell } from './EditableCell'
+import { RowDetailPanel } from './RowDetailPanel'
+import { FilterBar, type Filter } from './FilterBar'
 
 const EMPTY_EDITS: never[] = []
-import { EditableCell } from './EditableCell'
 import type { ColumnInfo, PaginationOptions } from '../../../shared/types'
 
 interface TableViewProps {
@@ -37,6 +39,9 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
   const [error, setError] = useState<string | null>(null)
   const [sorting, setSorting] = useState<SortingState>([])
   const [page, setPage] = useState(0)
+  const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null)
+  const [filters, setFilters] = useState<Filter[]>([])
+  const [appliedFilters, setAppliedFilters] = useState<Filter[]>([])
 
   const parentRef = useRef<HTMLDivElement>(null)
 
@@ -145,6 +150,57 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
     clearEdits(tabId)
   }
 
+  const handleApplyFilters = () => {
+    setAppliedFilters([...filters])
+    setPage(0)
+  }
+
+  const handleClearFilters = () => {
+    setFilters([])
+    setAppliedFilters([])
+    setPage(0)
+  }
+
+  // Apply client-side filtering
+  const filteredData = useMemo(() => {
+    if (appliedFilters.length === 0) return data
+
+    return data.filter((row) => {
+      return appliedFilters.every((filter) => {
+        const value = row[filter.column]
+        const filterValue = filter.value.toLowerCase()
+        const strValue = value === null ? '' : String(value).toLowerCase()
+
+        switch (filter.operator) {
+          case 'contains':
+            return strValue.includes(filterValue)
+          case 'equals':
+            return strValue === filterValue
+          case 'not_equals':
+            return strValue !== filterValue
+          case 'starts_with':
+            return strValue.startsWith(filterValue)
+          case 'ends_with':
+            return strValue.endsWith(filterValue)
+          case 'gt':
+            return Number(value) > Number(filter.value)
+          case 'gte':
+            return Number(value) >= Number(filter.value)
+          case 'lt':
+            return Number(value) < Number(filter.value)
+          case 'lte':
+            return Number(value) <= Number(filter.value)
+          case 'is_null':
+            return value === null
+          case 'is_not_null':
+            return value !== null
+          default:
+            return true
+        }
+      })
+    })
+  }, [data, appliedFilters])
+
   const tableColumns = useMemo<ColumnDef<Record<string, unknown>>[]>(() => {
     return columns.map((col) => ({
       accessorKey: col.name,
@@ -179,7 +235,7 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
   }, [columns, tabId, primaryKeys])
 
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns: tableColumns,
     state: {
       sorting
@@ -212,54 +268,55 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
     )
   }
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Table header info */}
-      <div className="px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-[11px] bg-[#1a1a1a]">
-        <span className="text-muted-foreground font-mono">
-          {totalCount.toLocaleString()} rows
-          {loading && <Loader2 className="w-3 h-3 ml-2 inline animate-spin" />}
-        </span>
-        <div className="flex items-center gap-2">
-          {hasEdits && (
-            <>
-              <span className="text-yellow-500">{pendingEdits.length} changes</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-5 text-[11px] px-2"
-                onClick={handleDiscardChanges}
-                disabled={saving}
-              >
-                <X className="w-3 h-3 mr-1" />
-                Discard
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                className="h-5 text-[11px] px-2"
-                onClick={handleSaveChanges}
-                disabled={saving}
-              >
-                {saving ? (
-                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                ) : (
-                  <Save className="w-3 h-3 mr-1" />
-                )}
-                Save
-              </Button>
-            </>
-          )}
-          <span className="text-muted-foreground font-mono">
-            {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, totalCount)}
-          </span>
-        </div>
-      </div>
+  const selectedRow = selectedRowIndex !== null ? data[selectedRowIndex] : null
 
-      {/* Table */}
-      <div ref={parentRef} className="flex-1 overflow-x-auto overflow-y-auto">
-        <div className="inline-block min-w-full">
-          <table className="min-w-full border-collapse text-xs font-mono">
+  return (
+    <div className="flex h-full min-w-0 overflow-hidden">
+      {/* Main table area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Edit actions bar - only show when there are edits */}
+        {hasEdits && (
+          <div className="px-3 py-1.5 border-b border-white/10 flex items-center justify-end gap-2 text-[11px] bg-[#1a1a1a]">
+            <span className="text-yellow-500">{pendingEdits.length} pending changes</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 text-[11px] px-2"
+              onClick={handleDiscardChanges}
+              disabled={saving}
+            >
+              <X className="w-3 h-3 mr-1" />
+              Discard
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              className="h-5 text-[11px] px-2"
+              onClick={handleSaveChanges}
+              disabled={saving}
+            >
+              {saving ? (
+                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+              ) : (
+                <Save className="w-3 h-3 mr-1" />
+              )}
+              Save
+            </Button>
+          </div>
+        )}
+
+        {/* Filter Bar */}
+        <FilterBar
+          columns={columns}
+          filters={filters}
+          onFiltersChange={setFilters}
+          onApply={handleApplyFilters}
+          onClear={handleClearFilters}
+        />
+
+        {/* Table */}
+      <div ref={parentRef} className="flex-1 min-w-0 overflow-auto">
+        <table className="w-full border-collapse text-xs font-mono" style={{ minWidth: 'max-content' }}>
           <thead className="sticky top-0 bg-[#1a1a1a] z-10">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -288,12 +345,15 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
               <>
                 {virtualizer.getVirtualItems().map((virtualRow) => {
                   const row = rows[virtualRow.index]
+                  const isSelected = selectedRowIndex === virtualRow.index
                   return (
                     <tr
                       key={row.id}
+                      onClick={() => setSelectedRowIndex(isSelected ? null : virtualRow.index)}
                       className={cn(
-                        'hover:bg-white/[0.06]',
-                        virtualRow.index % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.02]'
+                        'hover:bg-white/[0.06] cursor-pointer',
+                        virtualRow.index % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.02]',
+                        isSelected && 'bg-blue-500/20 hover:bg-blue-500/25'
                       )}
                       style={{
                         height: `${virtualRow.size}px`
@@ -313,36 +373,52 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
               </>
             )}
           </tbody>
-          </table>
-        </div>
+        </table>
       </div>
 
       {/* Pagination */}
-      <div className="px-3 py-1.5 border-t border-white/10 flex items-center justify-between bg-[#1a1a1a]">
-        <div className="text-[11px] text-muted-foreground font-mono">
-          Page {page + 1} of {totalPages || 1}
-        </div>
-        <div className="flex items-center gap-0.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="w-6 h-6"
-            disabled={page === 0 || loading}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-          >
-            <ChevronLeft className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="w-6 h-6"
-            disabled={page >= totalPages - 1 || loading}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            <ChevronRight className="w-3.5 h-3.5" />
-          </Button>
+        <div className="px-3 py-1.5 border-t border-white/10 flex items-center justify-between bg-[#1a1a1a]">
+          <div className="text-[11px] text-muted-foreground font-mono flex items-center gap-2">
+            <span>
+              {appliedFilters.length > 0
+                ? `${filteredData.length.toLocaleString()} of ${totalCount.toLocaleString()} rows`
+                : `${totalCount.toLocaleString()} rows`}
+            </span>
+            {loading && <Loader2 className="w-3 h-3 animate-spin" />}
+            <span className="text-white/30">|</span>
+            <span>Page {page + 1} of {totalPages || 1}</span>
+          </div>
+          <div className="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-6 h-6"
+              disabled={page === 0 || loading}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-6 h-6"
+              disabled={page >= totalPages - 1 || loading}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* Row Detail Panel */}
+      {selectedRow && (
+        <RowDetailPanel
+          row={selectedRow}
+          columns={columns}
+          onClose={() => setSelectedRowIndex(null)}
+        />
+      )}
     </div>
   )
 }
