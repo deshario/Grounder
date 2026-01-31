@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import { registerConnectionHandlers } from './connections'
+import { registerDatabaseHandlers } from './database'
 
 export function registerIpcHandlers() {
   // Ping handler for testing IPC communication
@@ -18,4 +19,7 @@ export function registerIpcHandlers() {
 
   // Register connection handlers
   registerConnectionHandlers()
+
+  // Register database handlers
+  registerDatabaseHandlers()
 }

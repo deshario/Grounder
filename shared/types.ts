@@ -35,6 +35,57 @@ export interface ConnectionCredentials {
   error?: string
 }
 
+// Database types
+export interface DatabaseInfo {
+  name: string
+}
+
+export interface SchemaInfo {
+  name: string
+}
+
+export interface TableInfo {
+  name: string
+  schema: string
+  rowCount?: number
+}
+
+export interface ColumnInfo {
+  name: string
+  type: string
+  nullable: boolean
+  defaultValue?: string
+  isPrimaryKey: boolean
+}
+
+export interface QueryResult {
+  columns: string[]
+  rows: Record<string, unknown>[]
+  rowCount: number
+  affectedRows?: number
+  executionTime: number
+}
+
+export interface TableData {
+  columns: ColumnInfo[]
+  rows: Record<string, unknown>[]
+  totalCount: number
+}
+
+export interface PaginationOptions {
+  limit: number
+  offset: number
+  orderBy?: string
+  orderDirection?: 'asc' | 'desc'
+}
+
+// Generic API result
+export interface ApiResult<T> {
+  success: boolean
+  data?: T
+  error?: string
+}
+
 // IPC API type definitions
 export interface ElectronAPI {
   ping: () => Promise<string>
@@ -47,6 +98,14 @@ export interface ElectronAPI {
   deleteCredentials: (connectionId: string) => Promise<{ success: boolean; error?: string }>
   connect: (config: ConnectionConfig, password: string, sshPassword?: string) => Promise<{ success: boolean; error?: string }>
   disconnect: (connectionId: string) => Promise<{ success: boolean; error?: string }>
+
+  // Database operations
+  getDatabases: (connectionId: string) => Promise<ApiResult<DatabaseInfo[]>>
+  getSchemas: (connectionId: string, database?: string) => Promise<ApiResult<SchemaInfo[]>>
+  getTables: (connectionId: string, schema?: string) => Promise<ApiResult<TableInfo[]>>
+  getColumns: (connectionId: string, table: string, schema?: string) => Promise<ApiResult<ColumnInfo[]>>
+  getTableData: (connectionId: string, table: string, schema: string | undefined, options: PaginationOptions) => Promise<ApiResult<TableData>>
+  query: (connectionId: string, sql: string, params?: unknown[]) => Promise<ApiResult<QueryResult>>
 }
 
 declare global {

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { ElectronAPI, ConnectionConfig } from '../../shared/types'
+import type { ElectronAPI, ConnectionConfig, PaginationOptions } from '../../shared/types'
 
 const electronAPI: ElectronAPI = {
   ping: () => ipcRenderer.invoke('ping'),
@@ -17,7 +17,21 @@ const electronAPI: ElectronAPI = {
   connect: (config: ConnectionConfig, password: string, sshPassword?: string) =>
     ipcRenderer.invoke('connection:connect', { config, password, sshPassword }),
   disconnect: (connectionId: string) =>
-    ipcRenderer.invoke('connection:disconnect', connectionId)
+    ipcRenderer.invoke('connection:disconnect', connectionId),
+
+  // Database operations
+  getDatabases: (connectionId: string) =>
+    ipcRenderer.invoke('database:get-databases', connectionId),
+  getSchemas: (connectionId: string, database?: string) =>
+    ipcRenderer.invoke('database:get-schemas', connectionId, database),
+  getTables: (connectionId: string, schema?: string) =>
+    ipcRenderer.invoke('database:get-tables', connectionId, schema),
+  getColumns: (connectionId: string, table: string, schema?: string) =>
+    ipcRenderer.invoke('database:get-columns', connectionId, table, schema),
+  getTableData: (connectionId: string, table: string, schema: string | undefined, options: PaginationOptions) =>
+    ipcRenderer.invoke('database:get-table-data', connectionId, table, schema, options),
+  query: (connectionId: string, sql: string, params?: unknown[]) =>
+    ipcRenderer.invoke('database:query', connectionId, sql, params)
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)
