@@ -36,6 +36,10 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('database:get-primary-key', connectionId, table, schema),
   updateRow: (connectionId: string, table: string, schema: string | undefined, pk: Record<string, unknown>, data: Record<string, unknown>) =>
     ipcRenderer.invoke('database:update-row', connectionId, table, schema, pk, data),
+  insertRow: (connectionId: string, table: string, schema: string | undefined, data: Record<string, unknown>) =>
+    ipcRenderer.invoke('database:insert-row', connectionId, table, schema, data),
+  deleteRow: (connectionId: string, table: string, schema: string | undefined, pk: Record<string, unknown>) =>
+    ipcRenderer.invoke('database:delete-row', connectionId, table, schema, pk),
 
   // Persistent storage
   getStoredConnections: () => ipcRenderer.invoke('store:get-connections'),

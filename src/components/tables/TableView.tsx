@@ -8,7 +8,7 @@ import {
   type SortingState
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowUp, ArrowDown, Loader2, ChevronLeft, ChevronRight, Save, X } from 'lucide-react'
+import { ArrowUp, ArrowDown, Loader2, ChevronLeft, ChevronRight, Save, X, Plus, Trash2 } from 'lucide-react'
 import { ipc } from '@/lib/ipc'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -16,6 +16,7 @@ import { useEditStore } from '@/stores/editStore'
 import { EditableCell } from './EditableCell'
 import { RowDetailPanel } from './RowDetailPanel'
 import { FilterBar, type Filter } from './FilterBar'
+import { AddRowModal } from './AddRowModal'
 
 const EMPTY_EDITS: never[] = []
 import type { ColumnInfo, PaginationOptions } from '../../../shared/types'
@@ -42,6 +43,7 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
   const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null)
   const [filters, setFilters] = useState<Filter[]>([])
   const [appliedFilters, setAppliedFilters] = useState<Filter[]>([])
+  const [showAddRow, setShowAddRow] = useState(false)
 
   const parentRef = useRef<HTMLDivElement>(null)
 
@@ -159,6 +161,39 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
     setFilters([])
     setAppliedFilters([])
     setPage(0)
+  }
+
+  const handleAddRow = async (data: Record<string, unknown>) => {
+    const result = await ipc.insertRow(connectionId, tableName, schema, data)
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to add row')
+    }
+    await loadData()
+  }
+
+  const handleDeleteRow = async () => {
+    if (selectedRowIndex === null || primaryKeys.length === 0) return
+
+    const row = data[selectedRowIndex]
+    const pk: Record<string, unknown> = {}
+    for (const pkCol of primaryKeys) {
+      pk[pkCol] = row[pkCol]
+    }
+
+    const confirmed = window.confirm('Are you sure you want to delete this row? This cannot be undone.')
+    if (!confirmed) return
+
+    try {
+      const result = await ipc.deleteRow(connectionId, tableName, schema, pk)
+      if (!result.success) {
+        setError(result.error || 'Failed to delete row')
+        return
+      }
+      setSelectedRowIndex(null)
+      await loadData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete row')
+    }
   }
 
   // Apply client-side filtering
@@ -379,6 +414,27 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
       {/* Pagination */}
         <div className="px-3 py-1.5 border-t border-white/10 flex items-center justify-between bg-[#1a1a1a]">
           <div className="text-[11px] text-muted-foreground font-mono flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 text-[11px] px-2"
+              onClick={() => setShowAddRow(true)}
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Add Row
+            </Button>
+            {selectedRowIndex !== null && primaryKeys.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 text-[11px] px-2 text-red-400 hover:text-red-300"
+                onClick={handleDeleteRow}
+              >
+                <Trash2 className="w-3 h-3 mr-1" />
+                Delete Row
+              </Button>
+            )}
+            <span className="text-white/30">|</span>
             <span>
               {appliedFilters.length > 0
                 ? `${filteredData.length.toLocaleString()} of ${totalCount.toLocaleString()} rows`
@@ -419,6 +475,14 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
           onClose={() => setSelectedRowIndex(null)}
         />
       )}
+
+      {/* Add Row Modal */}
+      <AddRowModal
+        open={showAddRow}
+        onClose={() => setShowAddRow(false)}
+        onAddRow={handleAddRow}
+        columns={columns}
+      />
     </div>
   )
 }

@@ -99,6 +99,8 @@ export interface ElectronAPI {
   query: (connectionId: string, sql: string, params?: unknown[]) => Promise<ApiResult<QueryResult>>
   getPrimaryKey: (connectionId: string, table: string, schema?: string) => Promise<ApiResult<string[]>>
   updateRow: (connectionId: string, table: string, schema: string | undefined, pk: Record<string, unknown>, data: Record<string, unknown>) => Promise<{ success: boolean; error?: string }>
+  insertRow: (connectionId: string, table: string, schema: string | undefined, data: Record<string, unknown>) => Promise<{ success: boolean; error?: string }>
+  deleteRow: (connectionId: string, table: string, schema: string | undefined, pk: Record<string, unknown>) => Promise<{ success: boolean; error?: string }>
 
   // Persistent storage
   getStoredConnections: () => Promise<ConnectionConfig[]>

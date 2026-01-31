@@ -27,6 +27,7 @@ interface TabState {
   openTableTab: (connectionId: string, tableName: string, schema: string) => void
   openQueryTab: (connectionId: string) => void
   closeTab: (tabId: string) => void
+  closeTableTab: (tableName: string, schema: string) => void
   setActiveTab: (tabId: string | null) => void
   updateQueryTab: (tabId: string, query: string) => void
 }
@@ -87,6 +88,28 @@ export const useTabStore = create<TabState>()((set, get) => ({
 
       if (state.activeTabId === tabId) {
         const closedIndex = state.tabs.findIndex((tab) => tab.id === tabId)
+        if (newTabs.length > 0) {
+          newActiveTabId = newTabs[Math.min(closedIndex, newTabs.length - 1)].id
+        } else {
+          newActiveTabId = null
+        }
+      }
+
+      return { tabs: newTabs, activeTabId: newActiveTabId }
+    }),
+
+  closeTableTab: (tableName, schema) =>
+    set((state) => {
+      const tabToClose = state.tabs.find(
+        (tab) => tab.type === 'table' && tab.tableName === tableName && tab.schema === schema
+      )
+      if (!tabToClose) return state
+
+      const newTabs = state.tabs.filter((tab) => tab.id !== tabToClose.id)
+      let newActiveTabId = state.activeTabId
+
+      if (state.activeTabId === tabToClose.id) {
+        const closedIndex = state.tabs.findIndex((tab) => tab.id === tabToClose.id)
         if (newTabs.length > 0) {
           newActiveTabId = newTabs[Math.min(closedIndex, newTabs.length - 1)].id
         } else {

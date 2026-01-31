@@ -138,4 +138,50 @@ export function registerDatabaseHandlers() {
       }
     }
   )
+
+  // Insert row
+  ipcMain.handle(
+    'database:insert-row',
+    async (
+      _event,
+      connectionId: string,
+      table: string,
+      schema: string | undefined,
+      data: Record<string, unknown>
+    ) => {
+      try {
+        const adapter = pluginRegistry.getInstance(connectionId)
+        if (!adapter) {
+          return { success: false, error: 'Connection not found' }
+        }
+        await adapter.insertRow(table, schema, data)
+        return { success: true }
+      } catch (error) {
+        return { success: false, error: String(error) }
+      }
+    }
+  )
+
+  // Delete row
+  ipcMain.handle(
+    'database:delete-row',
+    async (
+      _event,
+      connectionId: string,
+      table: string,
+      schema: string | undefined,
+      pk: Record<string, unknown>
+    ) => {
+      try {
+        const adapter = pluginRegistry.getInstance(connectionId)
+        if (!adapter) {
+          return { success: false, error: 'Connection not found' }
+        }
+        await adapter.deleteRow(table, schema, pk)
+        return { success: true }
+      } catch (error) {
+        return { success: false, error: String(error) }
+      }
+    }
+  )
 }

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
-import { ChevronRight, ChevronDown, Table, Folder, RefreshCw, Search } from 'lucide-react'
+import { ChevronRight, ChevronDown, Table, Folder, RefreshCw, Search, Plus, Trash2 } from 'lucide-react'
 import { useConnectionStore } from '@/stores/connectionStore'
+import { useTabStore } from '@/stores/tabStore'
 import { ipc } from '@/lib/ipc'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { CreateTableModal } from './CreateTableModal'
 import type { SchemaInfo, TableInfo } from '../../../shared/types'
 
 interface TreeNodeProps {
@@ -14,18 +16,19 @@ interface TreeNodeProps {
   isExpanded?: boolean
   onToggle?: () => void
   onClick?: () => void
+  onDelete?: () => void
   level?: number
   badge?: string | number
 }
 
-function TreeNode({ label, icon, children, isExpanded, onToggle, onClick, level = 0, badge }: TreeNodeProps) {
+function TreeNode({ label, icon, children, isExpanded, onToggle, onClick, onDelete, level = 0, badge }: TreeNodeProps) {
   const hasChildren = !!children
 
   return (
     <div>
-      <button
+      <div
         className={cn(
-          'w-full flex items-center gap-1.5 px-2 py-1 text-sm hover:bg-white/5 rounded-md',
+          'w-full flex items-center gap-1.5 px-2 py-1 text-sm hover:bg-white/5 rounded-md cursor-pointer group',
           'text-left'
         )}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
@@ -45,10 +48,21 @@ function TreeNode({ label, icon, children, isExpanded, onToggle, onClick, level 
         )}
         {icon}
         <span className="truncate flex-1">{label}</span>
+        {onDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete()
+            }}
+            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded transition-opacity"
+          >
+            <Trash2 className="w-3 h-3 text-muted-foreground hover:text-red-400" />
+          </button>
+        )}
         {badge !== undefined && (
           <span className="text-xs text-muted">{badge}</span>
         )}
-      </button>
+      </div>
       {hasChildren && isExpanded && (
         <div>{children}</div>
       )}
@@ -71,6 +85,7 @@ export function SchemaTree({ onTableSelect }: SchemaTreeProps) {
   const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(new Set(['public']))
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showCreateTable, setShowCreateTable] = useState(false)
 
   const loadSchemas = async () => {
     if (!activeConnectionId || connectionStatus !== 'connected') return
@@ -128,6 +143,56 @@ export function SchemaTree({ onTableSelect }: SchemaTreeProps) {
   const handleRefresh = () => {
     setTablesBySchema({})
     loadSchemas()
+  }
+
+  const handleCreateTable = async (tableName: string, schema: string, columns: { name: string; type: string; nullable: boolean; primaryKey: boolean; defaultValue: string }[]) => {
+    if (!activeConnectionId) return
+
+    // Build CREATE TABLE SQL
+    const columnDefs = columns.map(col => {
+      let def = `"${col.name}" ${col.type}`
+      if (!col.nullable) def += ' NOT NULL'
+      if (col.defaultValue) def += ` DEFAULT ${col.defaultValue}`
+      return def
+    })
+
+    const primaryKeys = columns.filter(c => c.primaryKey).map(c => `"${c.name}"`)
+    if (primaryKeys.length > 0) {
+      columnDefs.push(`PRIMARY KEY (${primaryKeys.join(', ')})`)
+    }
+
+    const sql = `CREATE TABLE "${schema}"."${tableName}" (\n  ${columnDefs.join(',\n  ')}\n)`
+
+    const result = await ipc.query(activeConnectionId, sql)
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to create table')
+    }
+
+    // Refresh tables for the schema
+    await loadTables(schema)
+  }
+
+  const closeTableTab = useTabStore((state) => state.closeTableTab)
+
+  const handleDeleteTable = async (tableName: string, schema: string) => {
+    if (!activeConnectionId) return
+
+    const confirmed = window.confirm(`Are you sure you want to delete table "${schema}.${tableName}"? This cannot be undone.`)
+    if (!confirmed) return
+
+    const sql = `DROP TABLE "${schema}"."${tableName}"`
+    const result = await ipc.query(activeConnectionId, sql)
+
+    if (!result.success) {
+      console.error('Failed to delete table:', result.error)
+      return
+    }
+
+    // Close tab if open
+    closeTableTab(tableName, schema)
+
+    // Refresh tables
+    await loadTables(schema)
   }
 
   // Filter schemas and tables based on search
@@ -220,6 +285,7 @@ export function SchemaTree({ onTableSelect }: SchemaTreeProps) {
                     level={1}
                     badge={table.rowCount?.toLocaleString()}
                     onClick={() => onTableSelect?.(table.name, schema.name)}
+                    onDelete={() => handleDeleteTable(table.name, schema.name)}
                   />
                 ))}
               </TreeNode>
@@ -227,6 +293,28 @@ export function SchemaTree({ onTableSelect }: SchemaTreeProps) {
           })
         )}
       </div>
+
+      {/* Footer with create table button */}
+      <div className="p-2 border-t border-border">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start gap-2 text-muted-foreground"
+          onClick={() => setShowCreateTable(true)}
+        >
+          <Plus className="w-4 h-4" />
+          New Table
+        </Button>
+      </div>
+
+      {/* Create Table Modal */}
+      <CreateTableModal
+        open={showCreateTable}
+        onClose={() => setShowCreateTable(false)}
+        onCreateTable={handleCreateTable}
+        schemas={schemas.map(s => s.name)}
+        defaultSchema="public"
+      />
     </div>
   )
 }

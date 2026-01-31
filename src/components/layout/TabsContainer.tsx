@@ -20,34 +20,30 @@ export function TabsContainer({ className }: TabsContainerProps) {
       {/* Tab bar */}
       <div className="h-12 flex items-center border-b border-border app-drag-region">
         <div className="flex items-center gap-1 px-2 h-full no-drag overflow-x-auto">
-          {tabs.length === 0 ? (
-            <span className="text-xs text-muted px-2">No tabs open</span>
-          ) : (
-            tabs.map((tab) => (
-              <div
-                key={tab.id}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-1.5 rounded-md text-sm cursor-pointer shrink-0',
-                  activeTabId === tab.id
-                    ? 'bg-white/10 text-foreground'
-                    : 'text-muted hover:text-foreground hover:bg-white/5'
-                )}
-                onClick={() => setActiveTab(tab.id)}
+          {tabs.map((tab) => (
+            <div
+              key={tab.id}
+              className={cn(
+                'flex items-center gap-2 px-3 py-1.5 rounded-md text-sm cursor-pointer shrink-0',
+                activeTabId === tab.id
+                  ? 'bg-white/10 text-foreground'
+                  : 'text-muted hover:text-foreground hover:bg-white/5'
+              )}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <Table className="w-3.5 h-3.5" />
+              <span className="max-w-[150px] truncate">{tab.title}</span>
+              <button
+                className="hover:bg-white/10 rounded p-0.5"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  closeTab(tab.id)
+                }}
               >
-                <Table className="w-3.5 h-3.5" />
-                <span className="max-w-[150px] truncate">{tab.title}</span>
-                <button
-                  className="hover:bg-white/10 rounded p-0.5"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    closeTab(tab.id)
-                  }}
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            ))
-          )}
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
         </div>
       </div>
 
