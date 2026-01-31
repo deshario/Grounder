@@ -8,30 +8,39 @@ import {
   type SortingState
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowUpDown, ArrowUp, ArrowDown, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowUpDown, ArrowUp, ArrowDown, Loader2, ChevronLeft, ChevronRight, Save, X } from 'lucide-react'
 import { ipc } from '@/lib/ipc'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useEditStore } from '@/stores/editStore'
+import { EditableCell } from './EditableCell'
 import type { ColumnInfo, PaginationOptions } from '../../../shared/types'
 
 interface TableViewProps {
   connectionId: string
   tableName: string
   schema: string
+  tabId: string
 }
 
 const PAGE_SIZE = 100
 
-export function TableView({ connectionId, tableName, schema }: TableViewProps) {
+export function TableView({ connectionId, tableName, schema, tabId }: TableViewProps) {
   const [data, setData] = useState<Record<string, unknown>[]>([])
   const [columns, setColumns] = useState<ColumnInfo[]>([])
+  const [primaryKeys, setPrimaryKeys] = useState<string[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sorting, setSorting] = useState<SortingState>([])
   const [page, setPage] = useState(0)
 
   const parentRef = useRef<HTMLDivElement>(null)
+
+  const pendingEdits = useEditStore((state) => state.pendingEdits[tabId] || [])
+  const clearEdits = useEditStore((state) => state.clearEdits)
+  const hasEdits = pendingEdits.length > 0
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -45,14 +54,21 @@ export function TableView({ connectionId, tableName, schema }: TableViewProps) {
         orderDirection: sorting[0]?.desc ? 'desc' : 'asc'
       }
 
-      const result = await ipc.getTableData(connectionId, tableName, schema, options)
+      const [dataResult, pkResult] = await Promise.all([
+        ipc.getTableData(connectionId, tableName, schema, options),
+        ipc.getPrimaryKey(connectionId, tableName, schema)
+      ])
 
-      if (result.success && result.data) {
-        setData(result.data.rows)
-        setColumns(result.data.columns)
-        setTotalCount(result.data.totalCount)
+      if (dataResult.success && dataResult.data) {
+        setData(dataResult.data.rows)
+        setColumns(dataResult.data.columns)
+        setTotalCount(dataResult.data.totalCount)
       } else {
-        setError(result.error || 'Failed to load data')
+        setError(dataResult.error || 'Failed to load data')
+      }
+
+      if (pkResult.success && pkResult.data) {
+        setPrimaryKeys(pkResult.data)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
@@ -64,6 +80,66 @@ export function TableView({ connectionId, tableName, schema }: TableViewProps) {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  const handleSaveChanges = async () => {
+    if (pendingEdits.length === 0) return
+    if (primaryKeys.length === 0) {
+      setError('Cannot save: table has no primary key')
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+
+    try {
+      // Group edits by row
+      const editsByRow = pendingEdits.reduce(
+        (acc, edit) => {
+          if (!acc[edit.rowIndex]) {
+            acc[edit.rowIndex] = []
+          }
+          acc[edit.rowIndex].push(edit)
+          return acc
+        },
+        {} as Record<number, typeof pendingEdits>
+      )
+
+      // Save each row
+      for (const [rowIndexStr, rowEdits] of Object.entries(editsByRow)) {
+        const rowIndex = Number(rowIndexStr)
+        const row = data[rowIndex]
+
+        // Build primary key value
+        const pk: Record<string, unknown> = {}
+        for (const pkCol of primaryKeys) {
+          pk[pkCol] = row[pkCol]
+        }
+
+        // Build data to update
+        const updateData: Record<string, unknown> = {}
+        for (const edit of rowEdits) {
+          updateData[edit.columnId] = edit.newValue
+        }
+
+        const result = await ipc.updateRow(connectionId, tableName, schema, pk, updateData)
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to save changes')
+        }
+      }
+
+      // Clear edits and reload data
+      clearEdits(tabId)
+      await loadData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save changes')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDiscardChanges = () => {
+    clearEdits(tabId)
+  }
 
   const tableColumns = useMemo<ColumnDef<Record<string, unknown>>[]>(() => {
     return columns.map((col) => ({
@@ -84,21 +160,22 @@ export function TableView({ connectionId, tableName, schema }: TableViewProps) {
           )}
         </button>
       ),
-      cell: ({ getValue }) => {
+      cell: ({ getValue, row }) => {
         const value = getValue()
-        if (value === null) {
-          return <span className="text-muted italic">NULL</span>
-        }
-        if (typeof value === 'object') {
-          return <span className="text-blue-400">{JSON.stringify(value)}</span>
-        }
-        if (typeof value === 'boolean') {
-          return <span className="text-purple-400">{value ? 'true' : 'false'}</span>
-        }
-        return String(value)
+        const rowIndex = row.index
+        return (
+          <EditableCell
+            tabId={tabId}
+            rowIndex={rowIndex}
+            columnId={col.name}
+            value={value}
+            type={col.type}
+            isPrimaryKey={primaryKeys.includes(col.name)}
+          />
+        )
       }
     }))
-  }, [columns])
+  }, [columns, tabId, primaryKeys])
 
   const table = useReactTable({
     data,
@@ -137,14 +214,45 @@ export function TableView({ connectionId, tableName, schema }: TableViewProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Table header info */}
-      <div className="px-4 py-2 border-b border-border flex items-center justify-between text-xs text-muted-foreground">
-        <span>
+      <div className="px-4 py-2 border-b border-border flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">
           {totalCount.toLocaleString()} rows total
           {loading && <Loader2 className="w-3 h-3 ml-2 inline animate-spin" />}
         </span>
-        <span>
-          Showing {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, totalCount)}
-        </span>
+        <div className="flex items-center gap-2">
+          {hasEdits && (
+            <>
+              <span className="text-yellow-500">{pendingEdits.length} pending changes</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs"
+                onClick={handleDiscardChanges}
+                disabled={saving}
+              >
+                <X className="w-3 h-3 mr-1" />
+                Discard
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="h-6 text-xs"
+                onClick={handleSaveChanges}
+                disabled={saving}
+              >
+                {saving ? (
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                ) : (
+                  <Save className="w-3 h-3 mr-1" />
+                )}
+                Save
+              </Button>
+            </>
+          )}
+          <span className="text-muted-foreground">
+            Showing {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, totalCount)}
+          </span>
+        </div>
       </div>
 
       {/* Table */}
@@ -192,7 +300,7 @@ export function TableView({ connectionId, tableName, schema }: TableViewProps) {
                       {row.getVisibleCells().map((cell) => (
                         <td
                           key={cell.id}
-                          className="px-3 py-1.5 border-b border-border/50 truncate max-w-[300px]"
+                          className="px-3 py-1.5 border-b border-border/50 max-w-[300px]"
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>

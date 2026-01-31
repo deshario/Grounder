@@ -86,6 +86,8 @@ export function TabsContainer({ className }: TabsContainerProps) {
           </div>
         ) : activeTab.type === 'table' ? (
           <TableView
+            key={activeTab.id}
+            tabId={activeTab.id}
             connectionId={activeTab.connectionId}
             tableName={activeTab.tableName}
             schema={activeTab.schema}

@@ -31,7 +31,11 @@ const electronAPI: ElectronAPI = {
   getTableData: (connectionId: string, table: string, schema: string | undefined, options: PaginationOptions) =>
     ipcRenderer.invoke('database:get-table-data', connectionId, table, schema, options),
   query: (connectionId: string, sql: string, params?: unknown[]) =>
-    ipcRenderer.invoke('database:query', connectionId, sql, params)
+    ipcRenderer.invoke('database:query', connectionId, sql, params),
+  getPrimaryKey: (connectionId: string, table: string, schema?: string) =>
+    ipcRenderer.invoke('database:get-primary-key', connectionId, table, schema),
+  updateRow: (connectionId: string, table: string, schema: string | undefined, pk: Record<string, unknown>, data: Record<string, unknown>) =>
+    ipcRenderer.invoke('database:update-row', connectionId, table, schema, pk, data)
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

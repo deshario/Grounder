@@ -97,4 +97,45 @@ export function registerDatabaseHandlers() {
       }
     }
   )
+
+  // Get primary key
+  ipcMain.handle(
+    'database:get-primary-key',
+    async (_event, connectionId: string, table: string, schema?: string) => {
+      try {
+        const adapter = pluginRegistry.getInstance(connectionId)
+        if (!adapter) {
+          return { success: false, error: 'Connection not found' }
+        }
+        const primaryKey = await adapter.getPrimaryKey(table, schema)
+        return { success: true, data: primaryKey }
+      } catch (error) {
+        return { success: false, error: String(error) }
+      }
+    }
+  )
+
+  // Update row
+  ipcMain.handle(
+    'database:update-row',
+    async (
+      _event,
+      connectionId: string,
+      table: string,
+      schema: string | undefined,
+      pk: Record<string, unknown>,
+      data: Record<string, unknown>
+    ) => {
+      try {
+        const adapter = pluginRegistry.getInstance(connectionId)
+        if (!adapter) {
+          return { success: false, error: 'Connection not found' }
+        }
+        await adapter.updateRow(table, schema, pk, data)
+        return { success: true }
+      } catch (error) {
+        return { success: false, error: String(error) }
+      }
+    }
+  )
 }

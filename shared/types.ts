@@ -106,6 +106,8 @@ export interface ElectronAPI {
   getColumns: (connectionId: string, table: string, schema?: string) => Promise<ApiResult<ColumnInfo[]>>
   getTableData: (connectionId: string, table: string, schema: string | undefined, options: PaginationOptions) => Promise<ApiResult<TableData>>
   query: (connectionId: string, sql: string, params?: unknown[]) => Promise<ApiResult<QueryResult>>
+  getPrimaryKey: (connectionId: string, table: string, schema?: string) => Promise<ApiResult<string[]>>
+  updateRow: (connectionId: string, table: string, schema: string | undefined, pk: Record<string, unknown>, data: Record<string, unknown>) => Promise<{ success: boolean; error?: string }>
 }
 
 declare global {
