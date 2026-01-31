@@ -35,7 +35,11 @@ const electronAPI: ElectronAPI = {
   getPrimaryKey: (connectionId: string, table: string, schema?: string) =>
     ipcRenderer.invoke('database:get-primary-key', connectionId, table, schema),
   updateRow: (connectionId: string, table: string, schema: string | undefined, pk: Record<string, unknown>, data: Record<string, unknown>) =>
-    ipcRenderer.invoke('database:update-row', connectionId, table, schema, pk, data)
+    ipcRenderer.invoke('database:update-row', connectionId, table, schema, pk, data),
+
+  // Persistent storage
+  getStoredConnections: () => ipcRenderer.invoke('store:get-connections'),
+  saveStoredConnections: (connections: unknown[]) => ipcRenderer.invoke('store:save-connections', connections)
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

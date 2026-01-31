@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { ipc } from '@/lib/ipc'
 
 export interface Connection {
   id: string
@@ -34,55 +34,66 @@ interface ConnectionState {
   setConnectionStatus: (id: string, status: ConnectionStatus) => void
 }
 
-export const useConnectionStore = create<ConnectionState>()(
-  persist(
-    (set) => ({
-      connections: [],
-      activeConnectionId: null,
-      connectionStatuses: {},
+export const useConnectionStore = create<ConnectionState>()((set, get) => ({
+  connections: [],
+  activeConnectionId: null,
+  connectionStatuses: {},
 
-      addConnection: (connection) =>
-        set((state) => ({
-          connections: [...state.connections, connection],
-          connectionStatuses: {
-            ...state.connectionStatuses,
-            [connection.id]: 'disconnected'
-          }
-        })),
+  addConnection: (connection) => {
+    set((state) => ({
+      connections: [...state.connections, connection],
+      connectionStatuses: {
+        ...state.connectionStatuses,
+        [connection.id]: 'disconnected'
+      }
+    }))
+    // Persist to disk
+    ipc.saveStoredConnections(get().connections)
+  },
 
-      updateConnection: (id, updates) =>
-        set((state) => ({
-          connections: state.connections.map((conn) =>
-            conn.id === id ? { ...conn, ...updates } : conn
-          )
-        })),
+  updateConnection: (id, updates) => {
+    set((state) => ({
+      connections: state.connections.map((conn) =>
+        conn.id === id ? { ...conn, ...updates } : conn
+      )
+    }))
+    // Persist to disk
+    ipc.saveStoredConnections(get().connections)
+  },
 
-      removeConnection: (id) =>
-        set((state) => ({
-          connections: state.connections.filter((conn) => conn.id !== id),
-          activeConnectionId:
-            state.activeConnectionId === id ? null : state.activeConnectionId,
-          connectionStatuses: Object.fromEntries(
-            Object.entries(state.connectionStatuses).filter(([key]) => key !== id)
-          )
-        })),
+  removeConnection: (id) => {
+    set((state) => ({
+      connections: state.connections.filter((conn) => conn.id !== id),
+      activeConnectionId:
+        state.activeConnectionId === id ? null : state.activeConnectionId,
+      connectionStatuses: Object.fromEntries(
+        Object.entries(state.connectionStatuses).filter(([key]) => key !== id)
+      )
+    }))
+    // Persist to disk
+    ipc.saveStoredConnections(get().connections)
+  },
 
-      setActiveConnection: (id) =>
-        set({ activeConnectionId: id }),
+  setActiveConnection: (id) =>
+    set({ activeConnectionId: id }),
 
-      setConnectionStatus: (id, status) =>
-        set((state) => ({
-          connectionStatuses: {
-            ...state.connectionStatuses,
-            [id]: status
-          }
-        }))
-    }),
-    {
-      name: 'querypad-connections',
-      partialize: (state) => ({
-        connections: state.connections
-      })
-    }
-  )
-)
+  setConnectionStatus: (id, status) =>
+    set((state) => ({
+      connectionStatuses: {
+        ...state.connectionStatuses,
+        [id]: status
+      }
+    }))
+}))
+
+// Load connections from disk on app start
+ipc.getStoredConnections().then((connections) => {
+  if (connections && connections.length > 0) {
+    useConnectionStore.setState({
+      connections: connections as Connection[],
+      connectionStatuses: Object.fromEntries(
+        connections.map((c) => [c.id, 'disconnected' as ConnectionStatus])
+      )
+    })
+  }
+})

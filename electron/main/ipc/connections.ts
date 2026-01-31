@@ -3,6 +3,7 @@ import { pluginRegistry } from '../plugins/registry'
 import { createPostgresAdapter } from '../plugins/adapters/postgres'
 import { keychainService } from '../services/keychain'
 import { sshTunnelManager } from '../services/ssh-tunnel'
+import { appStore } from '../services/store'
 import type { ConnectionConfig } from '../plugins/types'
 
 // Register PostgreSQL adapter
@@ -147,5 +148,16 @@ export function registerConnectionHandlers() {
     } catch (error) {
       return { success: false, error: String(error) }
     }
+  })
+
+  // Load saved connections from disk
+  ipcMain.handle('store:get-connections', async () => {
+    return appStore.getConnections()
+  })
+
+  // Save connections to disk
+  ipcMain.handle('store:save-connections', async (_event, connections) => {
+    appStore.saveConnections(connections)
+    return { success: true }
   })
 }
