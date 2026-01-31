@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter, DialogClose } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { useConnectionStore, type Connection } from '@/stores/connectionStore'
 import { ipc } from '@/lib/ipc'
 import { Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface ConnectionFormProps {
   open: boolean
@@ -14,64 +14,118 @@ interface ConnectionFormProps {
   connection?: Connection
 }
 
+type InputMode = 'url' | 'manual'
+
+function parseConnectionUrl(url: string): {
+  host: string
+  port: number
+  database: string
+  username: string
+  password: string
+} | null {
+  try {
+    // Handle postgres:// and postgresql:// URLs
+    const urlObj = new URL(url.replace(/^postgresql:/, 'postgres:'))
+    if (urlObj.protocol !== 'postgres:') return null
+
+    return {
+      host: urlObj.hostname || 'localhost',
+      port: parseInt(urlObj.port) || 5432,
+      database: urlObj.pathname.slice(1) || 'postgres',
+      username: urlObj.username || 'postgres',
+      password: decodeURIComponent(urlObj.password || '')
+    }
+  } catch {
+    return null
+  }
+}
+
 export function ConnectionForm({ open, onClose, connection }: ConnectionFormProps) {
   const addConnection = useConnectionStore((state) => state.addConnection)
   const updateConnection = useConnectionStore((state) => state.updateConnection)
+  const setConnectionStatus = useConnectionStore((state) => state.setConnectionStatus)
+  const setActiveConnection = useConnectionStore((state) => state.setActiveConnection)
 
+  const [inputMode, setInputMode] = useState<InputMode>(connection ? 'manual' : 'url')
+  const [urlInput, setUrlInput] = useState('')
+  const [connectionName, setConnectionName] = useState(connection?.name || '')
   const [formData, setFormData] = useState({
-    name: connection?.name || '',
-    host: connection?.host || 'localhost',
+    host: connection?.host || '',
     port: connection?.port || 5432,
-    database: connection?.database || 'postgres',
-    username: connection?.username || 'postgres',
-    password: '',
-    ssl: connection?.ssl || false,
-    sshEnabled: connection?.ssh.enabled || false,
-    sshHost: connection?.ssh.host || '',
-    sshPort: connection?.ssh.port || 22,
-    sshUsername: connection?.ssh.username || '',
-    sshPassword: '',
-    sshPrivateKeyPath: connection?.ssh.privateKeyPath || ''
+    database: connection?.database || '',
+    username: connection?.username || '',
+    password: ''
   })
 
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const handleChange = (field: string, value: string | number | boolean) => {
+  // Reset form when modal opens
+  useEffect(() => {
+    if (open) {
+      setInputMode(connection ? 'manual' : 'url')
+      setUrlInput('')
+      setConnectionName(connection?.name || '')
+      setFormData({
+        host: connection?.host || '',
+        port: connection?.port || 5432,
+        database: connection?.database || '',
+        username: connection?.username || '',
+        password: ''
+      })
+      setTestResult(null)
+    }
+  }, [open, connection])
+
+  const handleChange = (field: string, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     setTestResult(null)
   }
 
-  const buildConnectionConfig = (id: string) => ({
-    id,
-    name: formData.name || `${formData.host}:${formData.port}/${formData.database}`,
-    adapter: 'postgres',
-    host: formData.host,
-    port: formData.port,
-    database: formData.database,
-    username: formData.username,
-    ssl: formData.ssl,
-    ssh: {
-      enabled: formData.sshEnabled,
-      host: formData.sshHost,
-      port: formData.sshPort,
-      username: formData.sshUsername,
-      privateKeyPath: formData.sshPrivateKeyPath || undefined
+  const getConnectionData = (): { config: Omit<Connection, 'id'>; password: string } | null => {
+    if (inputMode === 'url') {
+      const parsed = parseConnectionUrl(urlInput)
+      if (!parsed) return null
+      return {
+        config: {
+          name: connectionName || `${parsed.host}:${parsed.port}/${parsed.database}`,
+          adapter: 'postgres',
+          host: parsed.host,
+          port: parsed.port,
+          database: parsed.database,
+          username: parsed.username
+        },
+        password: parsed.password
+      }
+    } else {
+      return {
+        config: {
+          name: connectionName || `${formData.host}:${formData.port}/${formData.database}`,
+          adapter: 'postgres',
+          host: formData.host,
+          port: formData.port,
+          database: formData.database,
+          username: formData.username
+        },
+        password: formData.password
+      }
     }
-  })
+  }
 
   const handleTestConnection = async () => {
+    const data = getConnectionData()
+    if (!data) {
+      setTestResult({ success: false, error: 'Invalid connection URL' })
+      return
+    }
+
     setTesting(true)
     setTestResult(null)
 
     try {
-      const config = buildConnectionConfig('test-' + Date.now())
-      const result = await ipc.testConnection(
-        config,
-        formData.password,
-        formData.sshEnabled ? formData.sshPassword : undefined
-      )
+      const config = { ...data.config, id: 'test-' + Date.now() }
+      const result = await ipc.testConnection(config, data.password)
       setTestResult(result)
     } catch (err) {
       setTestResult({ success: false, error: String(err) })
@@ -81,35 +135,40 @@ export function ConnectionForm({ open, onClose, connection }: ConnectionFormProp
   }
 
   const handleSave = async () => {
+    const data = getConnectionData()
+    if (!data) {
+      setTestResult({ success: false, error: 'Invalid connection URL' })
+      return
+    }
+
     setSaving(true)
 
     try {
       const id = connection?.id || crypto.randomUUID()
-      const newConnection: Connection = {
-        ...buildConnectionConfig(id),
-        ssh: {
-          enabled: formData.sshEnabled,
-          host: formData.sshHost,
-          port: formData.sshPort,
-          username: formData.sshUsername,
-          privateKeyPath: formData.sshPrivateKeyPath || undefined
-        }
-      }
+      const newConnection: Connection = { ...data.config, id }
 
       // Save password to keychain
-      await ipc.saveCredentials(
-        id,
-        formData.password,
-        formData.sshEnabled ? formData.sshPassword : undefined
-      )
+      await ipc.saveCredentials(id, data.password)
 
       if (connection) {
         updateConnection(connection.id, newConnection)
+        onClose()
       } else {
+        // Add and auto-connect for new connections
         addConnection(newConnection)
-      }
+        onClose()
 
-      onClose()
+        // Auto-connect
+        setConnectionStatus(id, 'connecting')
+        setActiveConnection(id)
+
+        const result = await ipc.connect(newConnection, data.password)
+        if (result.success) {
+          setConnectionStatus(id, 'connected')
+        } else {
+          setConnectionStatus(id, 'error')
+        }
+      }
     } finally {
       setSaving(false)
     }
@@ -123,163 +182,138 @@ export function ConnectionForm({ open, onClose, connection }: ConnectionFormProp
       </DialogHeader>
 
       <DialogContent className="space-y-4">
-        {/* Connection Name */}
-        <div className="space-y-2">
-          <Label htmlFor="name">Connection Name</Label>
-          <Input
-            id="name"
-            placeholder="My Database"
-            value={formData.name}
-            onChange={(e) => handleChange('name', e.target.value)}
-          />
-        </div>
-
-        {/* Host & Port */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2 space-y-2">
-            <Label htmlFor="host">Host</Label>
-            <Input
-              id="host"
-              placeholder="localhost"
-              value={formData.host}
-              onChange={(e) => handleChange('host', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="port">Port</Label>
-            <Input
-              id="port"
-              type="number"
-              value={formData.port}
-              onChange={(e) => handleChange('port', parseInt(e.target.value) || 5432)}
-            />
-          </div>
-        </div>
-
-        {/* Database */}
-        <div className="space-y-2">
-          <Label htmlFor="database">Database</Label>
-          <Input
-            id="database"
-            placeholder="postgres"
-            value={formData.database}
-            onChange={(e) => handleChange('database', e.target.value)}
-          />
-        </div>
-
-        {/* Username & Password */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              placeholder="postgres"
-              value={formData.username}
-              onChange={(e) => handleChange('username', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={(e) => handleChange('password', e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* SSL Toggle */}
-        <div className="flex items-center justify-between">
-          <Label htmlFor="ssl">Use SSL</Label>
-          <Switch
-            checked={formData.ssl}
-            onCheckedChange={(checked) => handleChange('ssl', checked)}
-          />
-        </div>
-
-        {/* SSH Tunnel Section */}
-        <div className="border-t border-border pt-4 mt-4">
-          <div className="flex items-center justify-between mb-4">
-            <Label htmlFor="ssh">SSH Tunnel</Label>
-            <Switch
-              checked={formData.sshEnabled}
-              onCheckedChange={(checked) => handleChange('sshEnabled', checked)}
-            />
-          </div>
-
-          {formData.sshEnabled && (
-            <div className="space-y-4">
-              {/* SSH Host & Port */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2 space-y-2">
-                  <Label htmlFor="sshHost">SSH Host</Label>
-                  <Input
-                    id="sshHost"
-                    placeholder="bastion.example.com"
-                    value={formData.sshHost}
-                    onChange={(e) => handleChange('sshHost', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sshPort">SSH Port</Label>
-                  <Input
-                    id="sshPort"
-                    type="number"
-                    value={formData.sshPort}
-                    onChange={(e) => handleChange('sshPort', parseInt(e.target.value) || 22)}
-                  />
-                </div>
-              </div>
-
-              {/* SSH Username */}
-              <div className="space-y-2">
-                <Label htmlFor="sshUsername">SSH Username</Label>
-                <Input
-                  id="sshUsername"
-                  placeholder="ubuntu"
-                  value={formData.sshUsername}
-                  onChange={(e) => handleChange('sshUsername', e.target.value)}
-                />
-              </div>
-
-              {/* SSH Private Key Path */}
-              <div className="space-y-2">
-                <Label htmlFor="sshPrivateKeyPath">Private Key Path (optional)</Label>
-                <Input
-                  id="sshPrivateKeyPath"
-                  placeholder="~/.ssh/id_rsa"
-                  value={formData.sshPrivateKeyPath}
-                  onChange={(e) => handleChange('sshPrivateKeyPath', e.target.value)}
-                />
-              </div>
-
-              {/* SSH Password (if no key) */}
-              {!formData.sshPrivateKeyPath && (
-                <div className="space-y-2">
-                  <Label htmlFor="sshPassword">SSH Password</Label>
-                  <Input
-                    id="sshPassword"
-                    type="password"
-                    placeholder="••••••••"
-                    value={formData.sshPassword}
-                    onChange={(e) => handleChange('sshPassword', e.target.value)}
-                  />
-                </div>
+        {/* Input Mode Toggle - only show for new connections */}
+        {!connection && (
+          <div className="flex rounded-md border border-border overflow-hidden">
+            <button
+              type="button"
+              className={cn(
+                'flex-1 px-3 py-1.5 text-xs font-medium transition-colors',
+                inputMode === 'url'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-transparent text-muted-foreground hover:text-foreground'
               )}
+              onClick={() => setInputMode('url')}
+            >
+              URL
+            </button>
+            <button
+              type="button"
+              className={cn(
+                'flex-1 px-3 py-1.5 text-xs font-medium transition-colors',
+                inputMode === 'manual'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-transparent text-muted-foreground hover:text-foreground'
+              )}
+              onClick={() => setInputMode('manual')}
+            >
+              Manual
+            </button>
+          </div>
+        )}
+
+        {/* URL Mode */}
+        {inputMode === 'url' && !connection && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="url">Connection URL</Label>
+              <Input
+                id="url"
+                value={urlInput}
+                onChange={(e) => {
+                  setUrlInput(e.target.value)
+                  setTestResult(null)
+                }}
+                className="font-mono text-xs"
+              />
             </div>
-          )}
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="name">Connection Name <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input
+                id="name"
+                value={connectionName}
+                onChange={(e) => setConnectionName(e.target.value)}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Manual Mode */}
+        {(inputMode === 'manual' || connection) && (
+          <>
+            {/* Connection Name */}
+            <div className="space-y-2">
+              <Label htmlFor="name">Connection Name <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input
+                id="name"
+                value={connectionName}
+                onChange={(e) => setConnectionName(e.target.value)}
+              />
+            </div>
+
+            {/* Host & Port */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="host">Host</Label>
+                <Input
+                  id="host"
+                  value={formData.host}
+                  onChange={(e) => handleChange('host', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="port">Port</Label>
+                <Input
+                  id="port"
+                  type="number"
+                  value={formData.port}
+                  onChange={(e) => handleChange('port', parseInt(e.target.value) || 5432)}
+                />
+              </div>
+            </div>
+
+            {/* Database */}
+            <div className="space-y-2">
+              <Label htmlFor="database">Database</Label>
+              <Input
+                id="database"
+                value={formData.database}
+                onChange={(e) => handleChange('database', e.target.value)}
+              />
+            </div>
+
+            {/* Username & Password */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  value={formData.username}
+                  onChange={(e) => handleChange('username', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => handleChange('password', e.target.value)}
+                />
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Test Result */}
         {testResult && (
           <div
-            className={`text-sm px-3 py-2 rounded-md ${
+            className={cn(
+              'text-sm px-3 py-2 rounded-md',
               testResult.success
                 ? 'bg-green-500/10 text-green-500'
                 : 'bg-red-500/10 text-red-500'
-            }`}
+            )}
           >
             {testResult.success
               ? 'Connection successful!'
@@ -298,7 +332,7 @@ export function ConnectionForm({ open, onClose, connection }: ConnectionFormProp
         </Button>
         <Button onClick={handleSave} disabled={saving}>
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-          Save
+          {connection ? 'Save' : 'Save & Connect'}
         </Button>
       </DialogFooter>
     </Dialog>

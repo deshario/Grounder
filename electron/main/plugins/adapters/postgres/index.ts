@@ -27,7 +27,6 @@ export class PostgresAdapter implements DatabaseAdapter {
       database: config.database,
       user: config.username,
       password,
-      ssl: config.ssl ? { rejectUnauthorized: false } : false,
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000
@@ -52,7 +51,6 @@ export class PostgresAdapter implements DatabaseAdapter {
       database: config.database,
       user: config.username,
       password,
-      ssl: config.ssl ? { rejectUnauthorized: false } : false,
       max: 1,
       connectionTimeoutMillis: 5000
     })

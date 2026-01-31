@@ -1,4 +1,4 @@
-import { Database, Circle } from 'lucide-react'
+import { Database, Circle, Trash2 } from 'lucide-react'
 import { useConnectionStore, type ConnectionStatus, type Connection } from '@/stores/connectionStore'
 import { cn } from '@/lib/utils'
 import { ipc } from '@/lib/ipc'
@@ -16,6 +16,7 @@ export function ConnectionList() {
   const connectionStatuses = useConnectionStore((state) => state.connectionStatuses)
   const setActiveConnection = useConnectionStore((state) => state.setActiveConnection)
   const setConnectionStatus = useConnectionStore((state) => state.setConnectionStatus)
+  const removeConnection = useConnectionStore((state) => state.removeConnection)
 
   const handleConnect = async (connection: Connection) => {
     const status = connectionStatuses[connection.id]
@@ -37,11 +38,7 @@ export function ConnectionList() {
       const creds = await ipc.getCredentials(connection.id)
 
       // Connect to database
-      const result = await ipc.connect(
-        connection,
-        creds.password || '',
-        connection.ssh.enabled ? creds.sshPassword || undefined : undefined
-      )
+      const result = await ipc.connect(connection, creds.password || '')
 
       if (result.success) {
         setConnectionStatus(connection.id, 'connected')
@@ -53,6 +50,19 @@ export function ConnectionList() {
       setConnectionStatus(connection.id, 'error')
       console.error('Connection error:', err)
     }
+  }
+
+  const handleDelete = async (e: React.MouseEvent, connectionId: string) => {
+    e.stopPropagation()
+    // Disconnect if connected
+    const status = connectionStatuses[connectionId]
+    if (status === 'connected') {
+      await ipc.disconnect(connectionId)
+    }
+    // Delete credentials from keychain
+    await ipc.deleteCredentials(connectionId)
+    // Remove from store
+    removeConnection(connectionId)
   }
 
   if (connections.length === 0) {
@@ -74,12 +84,12 @@ export function ConnectionList() {
         const isActive = activeConnectionId === connection.id
 
         return (
-          <button
+          <div
             key={connection.id}
             onClick={() => setActiveConnection(connection.id)}
             onDoubleClick={() => handleConnect(connection)}
             className={cn(
-              'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left',
+              'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left cursor-pointer group',
               'hover:bg-white/5 transition-colors',
               isActive && 'bg-white/10',
               status === 'connecting' && 'opacity-70'
@@ -87,10 +97,16 @@ export function ConnectionList() {
           >
             <Database className="w-4 h-4 text-muted shrink-0" />
             <span className="truncate flex-1">{connection.name}</span>
+            <button
+              onClick={(e) => handleDelete(e, connection.id)}
+              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded transition-opacity"
+            >
+              <Trash2 className="w-3 h-3 text-muted-foreground hover:text-red-400" />
+            </button>
             <Circle
-              className={cn('w-2 h-2 fill-current', statusColors[status])}
+              className={cn('w-2 h-2 fill-current shrink-0', statusColors[status])}
             />
-          </button>
+          </div>
         )
       })}
     </div>

@@ -14,14 +14,6 @@ export interface ConnectionConfig {
   port: number
   database: string
   username: string
-  ssl?: boolean
-  ssh?: {
-    enabled: boolean
-    host: string
-    port: number
-    username: string
-    privateKeyPath?: string
-  }
 }
 
 export interface TestConnectionResult {
@@ -31,7 +23,6 @@ export interface TestConnectionResult {
 
 export interface ConnectionCredentials {
   password: string | null
-  sshPassword: string | null
   error?: string
 }
 
@@ -92,11 +83,11 @@ export interface ElectronAPI {
   getAppInfo: () => Promise<AppInfo>
 
   // Connection management
-  testConnection: (config: ConnectionConfig, password: string, sshPassword?: string) => Promise<TestConnectionResult>
-  saveCredentials: (connectionId: string, password: string, sshPassword?: string) => Promise<{ success: boolean; error?: string }>
+  testConnection: (config: ConnectionConfig, password: string) => Promise<TestConnectionResult>
+  saveCredentials: (connectionId: string, password: string) => Promise<{ success: boolean; error?: string }>
   getCredentials: (connectionId: string) => Promise<ConnectionCredentials>
   deleteCredentials: (connectionId: string) => Promise<{ success: boolean; error?: string }>
-  connect: (config: ConnectionConfig, password: string, sshPassword?: string) => Promise<{ success: boolean; error?: string }>
+  connect: (config: ConnectionConfig, password: string) => Promise<{ success: boolean; error?: string }>
   disconnect: (connectionId: string) => Promise<{ success: boolean; error?: string }>
 
   // Database operations

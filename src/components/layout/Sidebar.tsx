@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Settings, Database, FolderTree } from 'lucide-react'
+import { Plus, Database, FolderTree } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConnectionList } from '@/components/connections/ConnectionList'
 import { ConnectionForm } from '@/components/connections/ConnectionForm'
@@ -81,18 +81,15 @@ export function Sidebar({ className, onTableSelect }: SidebarProps) {
 
       {/* Footer actions */}
       {activeTab === 'connections' && (
-        <div className="p-2 border-t border-border flex gap-1">
+        <div className="p-2 border-t border-border">
           <Button
             variant="ghost"
             size="sm"
-            className="flex-1 justify-start gap-2"
+            className="w-full justify-start gap-2"
             onClick={() => setShowConnectionForm(true)}
           >
             <Plus className="w-4 h-4" />
             Add Connection
-          </Button>
-          <Button variant="ghost" size="icon" className="w-8 h-8">
-            <Settings className="w-4 h-4" />
           </Button>
         </div>
       )}

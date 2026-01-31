@@ -9,14 +9,6 @@ export interface Connection {
   port: number
   database: string
   username: string
-  ssl: boolean
-  ssh: {
-    enabled: boolean
-    host: string
-    port: number
-    username: string
-    privateKeyPath?: string
-  }
 }
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'

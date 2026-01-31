@@ -1,6 +1,5 @@
 import { Sidebar } from '@/components/layout/Sidebar'
 import { TabsContainer } from '@/components/layout/TabsContainer'
-import { StatusBar } from '@/components/layout/StatusBar'
 import { useTabStore } from '@/stores/tabStore'
 import { useConnectionStore } from '@/stores/connectionStore'
 
@@ -15,12 +14,9 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar className="w-64 shrink-0" onTableSelect={handleTableSelect} />
-        <TabsContainer className="flex-1 min-w-0" />
-      </div>
-      <StatusBar />
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar className="w-64 shrink-0" onTableSelect={handleTableSelect} />
+      <TabsContainer className="flex-1 min-w-0" />
     </div>
   )
 }

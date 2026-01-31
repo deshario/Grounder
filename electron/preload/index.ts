@@ -6,16 +6,16 @@ const electronAPI: ElectronAPI = {
   getAppInfo: () => ipcRenderer.invoke('get-app-info'),
 
   // Connection management
-  testConnection: (config: ConnectionConfig, password: string, sshPassword?: string) =>
-    ipcRenderer.invoke('connection:test', { config, password, sshPassword }),
-  saveCredentials: (connectionId: string, password: string, sshPassword?: string) =>
-    ipcRenderer.invoke('connection:save-credentials', connectionId, password, sshPassword),
+  testConnection: (config: ConnectionConfig, password: string) =>
+    ipcRenderer.invoke('connection:test', { config, password }),
+  saveCredentials: (connectionId: string, password: string) =>
+    ipcRenderer.invoke('connection:save-credentials', connectionId, password),
   getCredentials: (connectionId: string) =>
     ipcRenderer.invoke('connection:get-credentials', connectionId),
   deleteCredentials: (connectionId: string) =>
     ipcRenderer.invoke('connection:delete-credentials', connectionId),
-  connect: (config: ConnectionConfig, password: string, sshPassword?: string) =>
-    ipcRenderer.invoke('connection:connect', { config, password, sshPassword }),
+  connect: (config: ConnectionConfig, password: string) =>
+    ipcRenderer.invoke('connection:connect', { config, password }),
   disconnect: (connectionId: string) =>
     ipcRenderer.invoke('connection:disconnect', connectionId),
 

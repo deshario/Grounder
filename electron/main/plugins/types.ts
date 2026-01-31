@@ -9,16 +9,6 @@ export interface ConnectionConfig {
   database: string
   username: string
   // Password stored in keychain, not here
-  ssl?: boolean
-  // SSH tunnel config
-  ssh?: {
-    enabled: boolean
-    host: string
-    port: number
-    username: string
-    privateKeyPath?: string
-    // Password stored in keychain if not using key
-  }
 }
 
 export interface DatabaseInfo {
