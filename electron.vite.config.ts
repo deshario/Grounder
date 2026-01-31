@@ -27,6 +27,11 @@ export default defineConfig({
   },
   renderer: {
     root: '.',
+    resolve: {
+      alias: {
+        '@': resolve(__dirname, 'src')
+      }
+    },
     build: {
       outDir: 'dist',
       rollupOptions: {
