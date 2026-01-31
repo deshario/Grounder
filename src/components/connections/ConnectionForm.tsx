@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useConnectionStore, type Connection } from '@/stores/connectionStore'
+import { ipc } from '@/lib/ipc'
 import { Loader2 } from 'lucide-react'
 
 interface ConnectionFormProps {
@@ -34,7 +35,7 @@ export function ConnectionForm({ open, onClose, connection }: ConnectionFormProp
   })
 
   const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null)
+  const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null)
   const [saving, setSaving] = useState(false)
 
   const handleChange = (field: string, value: string | number | boolean) => {
@@ -42,16 +43,38 @@ export function ConnectionForm({ open, onClose, connection }: ConnectionFormProp
     setTestResult(null)
   }
 
+  const buildConnectionConfig = (id: string) => ({
+    id,
+    name: formData.name || `${formData.host}:${formData.port}/${formData.database}`,
+    adapter: 'postgres',
+    host: formData.host,
+    port: formData.port,
+    database: formData.database,
+    username: formData.username,
+    ssl: formData.ssl,
+    ssh: {
+      enabled: formData.sshEnabled,
+      host: formData.sshHost,
+      port: formData.sshPort,
+      username: formData.sshUsername,
+      privateKeyPath: formData.sshPrivateKeyPath || undefined
+    }
+  })
+
   const handleTestConnection = async () => {
     setTesting(true)
     setTestResult(null)
 
     try {
-      // TODO: Call IPC to test connection
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      setTestResult('success')
-    } catch {
-      setTestResult('error')
+      const config = buildConnectionConfig('test-' + Date.now())
+      const result = await ipc.testConnection(
+        config,
+        formData.password,
+        formData.sshEnabled ? formData.sshPassword : undefined
+      )
+      setTestResult(result)
+    } catch (err) {
+      setTestResult({ success: false, error: String(err) })
     } finally {
       setTesting(false)
     }
@@ -61,15 +84,9 @@ export function ConnectionForm({ open, onClose, connection }: ConnectionFormProp
     setSaving(true)
 
     try {
+      const id = connection?.id || crypto.randomUUID()
       const newConnection: Connection = {
-        id: connection?.id || crypto.randomUUID(),
-        name: formData.name || `${formData.host}:${formData.port}/${formData.database}`,
-        adapter: 'postgres',
-        host: formData.host,
-        port: formData.port,
-        database: formData.database,
-        username: formData.username,
-        ssl: formData.ssl,
+        ...buildConnectionConfig(id),
         ssh: {
           enabled: formData.sshEnabled,
           host: formData.sshHost,
@@ -79,7 +96,12 @@ export function ConnectionForm({ open, onClose, connection }: ConnectionFormProp
         }
       }
 
-      // TODO: Save password to keychain via IPC
+      // Save password to keychain
+      await ipc.saveCredentials(
+        id,
+        formData.password,
+        formData.sshEnabled ? formData.sshPassword : undefined
+      )
 
       if (connection) {
         updateConnection(connection.id, newConnection)
@@ -254,14 +276,14 @@ export function ConnectionForm({ open, onClose, connection }: ConnectionFormProp
         {testResult && (
           <div
             className={`text-sm px-3 py-2 rounded-md ${
-              testResult === 'success'
+              testResult.success
                 ? 'bg-green-500/10 text-green-500'
                 : 'bg-red-500/10 text-red-500'
             }`}
           >
-            {testResult === 'success'
+            {testResult.success
               ? 'Connection successful!'
-              : 'Connection failed. Check your settings.'}
+              : `Connection failed: ${testResult.error || 'Unknown error'}`}
           </div>
         )}
       </DialogContent>

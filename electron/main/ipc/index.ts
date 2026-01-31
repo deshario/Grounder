@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import { registerConnectionHandlers } from './connections'
 
 export function registerIpcHandlers() {
   // Ping handler for testing IPC communication
@@ -14,4 +15,7 @@ export function registerIpcHandlers() {
       platform: process.platform
     }
   })
+
+  // Register connection handlers
+  registerConnectionHandlers()
 }
