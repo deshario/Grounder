@@ -42,12 +42,14 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "electron",
-      "esbuild"
+      "esbuild",
+      "keytar"
     ]
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "keytar": "^7.9.0",
     "lucide-react": "^0.563.0",
     "pg": "^8.18.0",
     "react": "^19.2.4",
