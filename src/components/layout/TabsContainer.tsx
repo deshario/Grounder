@@ -1,7 +1,9 @@
-import { X, Table } from 'lucide-react'
+import { X, Table, Code, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/stores/tabStore'
+import { useConnectionStore } from '@/stores/connectionStore'
 import { TableView } from '@/components/tables/TableView'
+import { QueryEditor } from '@/components/query/QueryEditor'
 
 interface TabsContainerProps {
   className?: string
@@ -12,6 +14,13 @@ export function TabsContainer({ className }: TabsContainerProps) {
   const activeTabId = useTabStore((state) => state.activeTabId)
   const closeTab = useTabStore((state) => state.closeTab)
   const setActiveTab = useTabStore((state) => state.setActiveTab)
+  const openQueryTab = useTabStore((state) => state.openQueryTab)
+
+  const activeConnectionId = useConnectionStore((state) => state.activeConnectionId)
+  const connectionStatus = useConnectionStore((state) =>
+    activeConnectionId ? state.connectionStatuses[activeConnectionId] : null
+  )
+  const isConnected = connectionStatus === 'connected'
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId)
 
@@ -20,6 +29,15 @@ export function TabsContainer({ className }: TabsContainerProps) {
       {/* Tab bar */}
       <div className="h-12 flex items-center border-b border-border app-drag-region">
         <div className="flex items-center gap-1 px-2 h-full no-drag overflow-x-auto">
+          {isConnected && activeConnectionId && (
+            <button
+              className="flex items-center justify-center w-6 h-6 rounded-md text-muted hover:text-foreground hover:bg-white/5 shrink-0"
+              onClick={() => openQueryTab(activeConnectionId)}
+              title="New Query"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          )}
           {tabs.map((tab) => (
             <div
               key={tab.id}
@@ -31,7 +49,11 @@ export function TabsContainer({ className }: TabsContainerProps) {
               )}
               onClick={() => setActiveTab(tab.id)}
             >
-              <Table className="w-3.5 h-3.5" />
+              {tab.type === 'query' ? (
+                <Code className="w-3.5 h-3.5" />
+              ) : (
+                <Table className="w-3.5 h-3.5" />
+              )}
               <span className="max-w-[150px] truncate">{tab.title}</span>
               <button
                 className="hover:bg-white/10 rounded p-0.5"
@@ -57,6 +79,12 @@ export function TabsContainer({ className }: TabsContainerProps) {
             <p className="text-sm font-medium mb-1">No table selected</p>
             <p className="text-xs text-muted-foreground">Click a table in the Schema tab to view its data</p>
           </div>
+        ) : activeTab.type === 'query' ? (
+          <QueryEditor
+            key={activeTab.id}
+            tabId={activeTab.id}
+            connectionId={activeTab.connectionId}
+          />
         ) : (
           <TableView
             key={activeTab.id}

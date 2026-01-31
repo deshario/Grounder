@@ -20,7 +20,7 @@ function createWindow() {
   // Load the renderer
   if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:5173')
-    // Open DevTools with Cmd+Option+I if needed
+    mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(join(__dirname, '../../dist/index.html'))
   }

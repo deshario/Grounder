@@ -72,7 +72,7 @@ export const useTabStore = create<TabState>()((set, get) => ({
       type: 'query',
       title: `Query ${queryCount}`,
       connectionId,
-      query: ''
+      query: 'SELECT * FROM '
     }
 
     set((state) => ({
