@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Settings, Database, FolderTree } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConnectionList } from '@/components/connections/ConnectionList'
@@ -23,6 +23,13 @@ export function Sidebar({ className, onTableSelect }: SidebarProps) {
     activeConnectionId ? state.connectionStatuses[activeConnectionId] : null
   )
   const isConnected = connectionStatus === 'connected'
+
+  // Auto-switch to Schema tab when connected
+  useEffect(() => {
+    if (isConnected) {
+      setActiveTab('schema')
+    }
+  }, [isConnected])
 
   return (
     <div className={cn('flex flex-col h-full bg-background border-r border-border', className)}>

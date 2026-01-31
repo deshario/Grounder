@@ -13,6 +13,8 @@ import { ipc } from '@/lib/ipc'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useEditStore } from '@/stores/editStore'
+
+const EMPTY_EDITS: never[] = []
 import { EditableCell } from './EditableCell'
 import type { ColumnInfo, PaginationOptions } from '../../../shared/types'
 
@@ -38,7 +40,9 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
 
   const parentRef = useRef<HTMLDivElement>(null)
 
-  const pendingEdits = useEditStore((state) => state.pendingEdits[tabId] || [])
+  const pendingEdits = useEditStore(
+    (state) => state.pendingEdits[tabId] ?? EMPTY_EDITS
+  )
   const clearEdits = useEditStore((state) => state.clearEdits)
   const hasEdits = pendingEdits.length > 0
 

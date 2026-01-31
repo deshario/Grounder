@@ -1,6 +1,7 @@
 import { Database, Circle } from 'lucide-react'
-import { useConnectionStore, type ConnectionStatus } from '@/stores/connectionStore'
+import { useConnectionStore, type ConnectionStatus, type Connection } from '@/stores/connectionStore'
 import { cn } from '@/lib/utils'
+import { ipc } from '@/lib/ipc'
 
 const statusColors: Record<ConnectionStatus, string> = {
   disconnected: 'text-muted',
@@ -14,6 +15,45 @@ export function ConnectionList() {
   const activeConnectionId = useConnectionStore((state) => state.activeConnectionId)
   const connectionStatuses = useConnectionStore((state) => state.connectionStatuses)
   const setActiveConnection = useConnectionStore((state) => state.setActiveConnection)
+  const setConnectionStatus = useConnectionStore((state) => state.setConnectionStatus)
+
+  const handleConnect = async (connection: Connection) => {
+    const status = connectionStatuses[connection.id]
+
+    // If already connected, just select it
+    if (status === 'connected') {
+      setActiveConnection(connection.id)
+      return
+    }
+
+    // If connecting, ignore
+    if (status === 'connecting') return
+
+    setConnectionStatus(connection.id, 'connecting')
+    setActiveConnection(connection.id)
+
+    try {
+      // Get credentials from keychain
+      const creds = await ipc.getCredentials(connection.id)
+
+      // Connect to database
+      const result = await ipc.connect(
+        connection,
+        creds.password || '',
+        connection.ssh.enabled ? creds.sshPassword || undefined : undefined
+      )
+
+      if (result.success) {
+        setConnectionStatus(connection.id, 'connected')
+      } else {
+        setConnectionStatus(connection.id, 'error')
+        console.error('Connection failed:', result.error)
+      }
+    } catch (err) {
+      setConnectionStatus(connection.id, 'error')
+      console.error('Connection error:', err)
+    }
+  }
 
   if (connections.length === 0) {
     return (
@@ -33,10 +73,12 @@ export function ConnectionList() {
           <button
             key={connection.id}
             onClick={() => setActiveConnection(connection.id)}
+            onDoubleClick={() => handleConnect(connection)}
             className={cn(
               'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left',
               'hover:bg-white/5 transition-colors',
-              isActive && 'bg-white/10'
+              isActive && 'bg-white/10',
+              status === 'connecting' && 'opacity-70'
             )}
           >
             <Database className="w-4 h-4 text-muted shrink-0" />
