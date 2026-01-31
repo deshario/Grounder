@@ -27,6 +27,7 @@
     "@types/pg": "^8.16.0",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
+    "@types/ssh2": "^1.15.5",
     "@vitejs/plugin-react": "^5.1.2",
     "autoprefixer": "^10.4.24",
     "electron": "^40.1.0",
@@ -43,7 +44,9 @@
     "onlyBuiltDependencies": [
       "electron",
       "esbuild",
-      "keytar"
+      "keytar",
+      "ssh2",
+      "cpu-features"
     ]
   },
   "dependencies": {
@@ -54,6 +57,7 @@
     "pg": "^8.18.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "ssh2": "^1.17.0",
     "tailwind-merge": "^3.4.0"
   }
 }
