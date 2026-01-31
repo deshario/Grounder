@@ -257,8 +257,9 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
       </div>
 
       {/* Table */}
-      <div ref={parentRef} className="flex-1 overflow-auto">
-        <table className="w-max min-w-full border-collapse text-xs font-mono">
+      <div ref={parentRef} className="flex-1 overflow-x-auto overflow-y-auto">
+        <div className="inline-block min-w-full">
+          <table className="min-w-full border-collapse text-xs font-mono">
           <thead className="sticky top-0 bg-[#1a1a1a] z-10">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -312,7 +313,8 @@ export function TableView({ connectionId, tableName, schema, tabId }: TableViewP
               </>
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
 
       {/* Pagination */}
