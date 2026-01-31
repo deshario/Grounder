@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import { Plus, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ConnectionList } from '@/components/connections/ConnectionList'
+import { ConnectionForm } from '@/components/connections/ConnectionForm'
 import { cn } from '@/lib/utils'
 
 interface SidebarProps {
@@ -7,6 +10,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ className }: SidebarProps) {
+  const [showConnectionForm, setShowConnectionForm] = useState(false)
+
   return (
     <div className={cn('flex flex-col h-full bg-background border-r border-border', className)}>
       {/* Header with drag region for macOS */}
@@ -16,14 +21,17 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* Connection list */}
       <div className="flex-1 overflow-auto p-2">
-        <div className="text-xs text-muted px-2 py-4 text-center">
-          No connections yet
-        </div>
+        <ConnectionList />
       </div>
 
       {/* Footer actions */}
       <div className="p-2 border-t border-border flex gap-1">
-        <Button variant="ghost" size="sm" className="flex-1 justify-start gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="flex-1 justify-start gap-2"
+          onClick={() => setShowConnectionForm(true)}
+        >
           <Plus className="w-4 h-4" />
           Add Connection
         </Button>
@@ -31,6 +39,12 @@ export function Sidebar({ className }: SidebarProps) {
           <Settings className="w-4 h-4" />
         </Button>
       </div>
+
+      {/* Connection Form Modal */}
+      <ConnectionForm
+        open={showConnectionForm}
+        onClose={() => setShowConnectionForm(false)}
+      />
     </div>
   )
 }
