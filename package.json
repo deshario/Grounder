@@ -1,9 +1,11 @@
 {
-  "name": "querypad",
+  "name": "grounder",
   "version": "1.0.0",
+  "author": "deshario",
+  "license": "MIT",
   "type": "module",
   "description": "A minimal desktop database viewer/editor",
-  "main": "./dist-electron/main/index.js",
+  "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
@@ -15,70 +17,45 @@
     "dist": "electron-vite build && electron-builder"
   },
   "build": {
-    "appId": "com.querypad.app",
-    "productName": "QueryPad",
+    "appId": "com.grounder.app",
+    "productName": "Grounder",
     "directories": {
       "output": "release"
     },
     "files": [
-      "dist/**/*",
-      "dist-electron/**/*",
+      "out/**/*",
       "node_modules/**/*",
       "!node_modules/.pnpm/**/cpu-features/**"
     ],
     "asarUnpack": [
-      "node_modules/keytar/**",
-      "node_modules/ssh2/**"
+      "node_modules/keytar/**"
     ],
     "npmRebuild": false,
     "mac": {
       "target": ["dmg", "zip"],
-      "category": "public.app-category.developer-tools"
-    },
-    "dmg": {
-      "contents": [
-        { "x": 130, "y": 220 },
-        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
-      ]
+      "category": "public.app-category.developer-tools",
+      "icon": "resources/icon.icns"
     }
   },
-  "keywords": [
-    "database",
-    "postgresql",
-    "electron",
-    "viewer"
-  ],
-  "author": "",
-  "license": "MIT",
-  "packageManager": "pnpm@10.14.0",
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/pg": "^8.16.0",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
-    "@types/ssh2": "^1.15.5",
     "@vitejs/plugin-react": "^5.1.2",
-    "autoprefixer": "^10.4.24",
     "electron": "^40.1.0",
     "electron-builder": "^26.4.0",
     "electron-vite": "^5.0.0",
     "eslint": "^9.39.2",
     "globals": "^17.2.0",
-    "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.54.0",
     "vite": "^7.3.1"
   },
   "pnpm": {
-    "onlyBuiltDependencies": [
-      "electron",
-      "esbuild",
-      "keytar",
-      "ssh2",
-      "cpu-features"
-    ]
+    "onlyBuiltDependencies": ["electron", "esbuild", "keytar"]
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -93,7 +70,6 @@
     "pg": "^8.18.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "ssh2": "^1.17.0",
     "tailwind-merge": "^3.4.0",
     "zustand": "^5.0.10"
   }

@@ -18,6 +18,6 @@ export default tseslint.config(
     }
   },
   {
-    ignores: ['dist/**', 'dist-electron/**', 'node_modules/**']
+    ignores: ['out/**', 'node_modules/**', 'release/**']
   }
 )

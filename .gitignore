@@ -5,8 +5,6 @@ node_modules/
 PROGRESS.md
 
 # Build output
-dist/
-dist-electron/
 out/
 release/
 *.dmg
