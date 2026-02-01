@@ -6,8 +6,6 @@ app.setName('Grounder')
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
     minWidth: 800,
     minHeight: 600,
     webPreferences: {
@@ -20,10 +18,11 @@ function createWindow() {
     trafficLightPosition: { x: 15, y: 10 }
   })
 
+  mainWindow.maximize()
+
   // Load the renderer
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
-    mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
