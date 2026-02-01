@@ -13,6 +13,14 @@ A lightweight PostgreSQL client for developers who prefer simplicity
 - **Filters** - Filter table data with conditions
 - **Secure Storage** - Credentials stored in macOS Keychain
 
+## Install
+
+Download from [Releases](https://github.com/deshario/Grounder/releases/latest), then run:
+
+```bash
+xattr -cr /Applications/Grounder.app
+```
+
 ## Development
 
 ```bash
