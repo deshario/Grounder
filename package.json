@@ -32,7 +32,10 @@
     ],
     "npmRebuild": false,
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "category": "public.app-category.developer-tools",
       "icon": "resources/icon.icns"
     }
@@ -55,7 +58,14 @@
     "vite": "^7.3.1"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["electron", "esbuild", "keytar"]
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild",
+      "keytar"
+    ],
+    "overrides": {
+      "tar": ">=7.5.7"
+    }
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
